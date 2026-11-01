@@ -5,6 +5,7 @@ import { requireTenant } from "@/lib/auth";
 import { getCompany, listSeries } from "@/lib/actions";
 import InvoiceForm from "../InvoiceForm";
 import { visitsFromDocs } from "@/lib/svr";
+import { llamaCloudEnabled } from "@/lib/llamacloud";
 
 export const dynamic = "force-dynamic";
 
@@ -30,5 +31,5 @@ export default async function NewInvoice({ searchParams }: { searchParams: Promi
     .filter((e) => e.currency === company.currency);
   if (!list.length) return <div className="card">Add a client first. <Link href="/clients">Go to clients</Link></div>;
   return <><h1>{initial ? "Edit invoice" : "New invoice"}</h1>
-    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} preload={preload} presetClient={client} openExpenses={openExpenses} /></>;
+    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} preload={preload} presetClient={client} openExpenses={openExpenses} stepwise={llamaCloudEnabled()} /></>;
 }

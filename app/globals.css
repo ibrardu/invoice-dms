@@ -174,3 +174,17 @@ th,td{border-bottom-color:var(--ground)}
 /* Category and meta labels are typographic tags, not pills */
 .tag{color:var(--tag);font-size:14px}
 input.autofilled,select.autofilled{background:#fff6f0;border-color:#e9b99c}
+
+/* Extraction progress: one overall bar + a row per file. Bars animate transform only. */
+.xp{margin-top:12px;padding:16px;background:var(--ground);border-radius:var(--radius-small)}
+.xp-head{display:flex;justify-content:space-between;margin-bottom:8px}
+.xp-bar,.xp-mini{display:block;height:6px;border-radius:3px;background:var(--raised);overflow:hidden}
+.xp-bar i,.xp-mini i{display:block;height:100%;background:var(--text);transform-origin:left;transition:transform 300ms var(--ease)}
+.xp ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.xp li{display:grid;grid-template-columns:minmax(0,1fr) auto 80px;gap:12px;align-items:center;font-size:13px}
+.xp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xp-mini{height:4px}
+.xp li.done .xp-mini i{background:var(--positive)}
+.xp li.failed{color:var(--negative)}.xp li.failed .xp-mini i{background:var(--negative)}
+.xp li.reading .xp-stage{color:var(--sienna)}
+@media (max-width:520px){.xp li{grid-template-columns:minmax(0,1fr) 60px}.xp-stage{grid-column:1/-1;grid-row:2}}

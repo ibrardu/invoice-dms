@@ -3,7 +3,7 @@ import { z } from "zod";
 import { extractText, getDocumentProxy } from "unpdf";
 import { requireTenant } from "./auth";
 import { EXPENSE_CATEGORIES } from "./expense-categories";
-import { llamaCloudEnabled, llamaExtract } from "./llamacloud";
+import { llamaCloudEnabled, llamaExtract, startExtract, checkExtract } from "./llamacloud";
 
 const CATS = EXPENSE_CATEGORIES.map(([k]) => k) as [string, ...string[]];
 const n = z.coerce.number().nullable().catch(null);
@@ -97,4 +97,26 @@ export async function readReceipt(f: FormData): Promise<{ ok: true; data: Receip
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not read the receipt" };
   }
+}
+
+/** Step 1 of receipt reading with progress: upload and start LlamaParse. null = use readReceipt instead. */
+export async function startReceipt(f: FormData): Promise<{ ok: true; jobId: string } | { ok: false; error: string } | null> {
+  await requireTenant();
+  if (!llamaCloudEnabled()) return null;
+  const file = f.get("receipt");
+  if (!(file instanceof File) || !file.size) return { ok: false, error: "Choose a receipt photo or PDF first." };
+  if (file.size > 8 * 1024 * 1024) return { ok: false, error: "Receipt is larger than 8 MB." };
+  try { return { ok: true, jobId: await startExtract(file, RECEIPT_JSON_SCHEMA, PROMPT) }; }
+  catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Could not upload" }; }
+}
+
+/** Step 2: one status check. */
+export async function checkReceipt(jobId: string): Promise<{ state: "running" } | { state: "failed"; error: string } | { state: "done"; result: { ok: true; data: ReceiptData } | { ok: false; error: string } }> {
+  await requireTenant();
+  if (!/^[\w-]{4,80}$/.test(jobId)) return { state: "failed", error: "Bad job id" };
+  try {
+    const st = await checkExtract(jobId, "receipt");
+    if (st.state !== "done") return st;
+    return { state: "done", result: usable(clean(receiptSchema.parse(st.data))) };
+  } catch (e) { return { state: "failed", error: e instanceof Error ? e.message : "Could not check" }; }
 }
