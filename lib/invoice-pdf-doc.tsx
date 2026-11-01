@@ -44,11 +44,11 @@ export async function renderInvoicePdf({ inv, client, items, company, balance, q
   const note = [vatNote(company.vatStatus, client.vatTreatment, company.taxId, client.taxId), inv.notes, company.footerNote].filter(Boolean).join("\n");
 
   const doc = (
-    <Document title={`Invoice ${inv.number}`} author={company.name} subject={`Invoice ${inv.number} for ${client.name}`}>
+    <Document title={`${inv.kind === "credit_note" ? "Credit note" : "Invoice"} ${inv.number}`} author={company.name} subject={`Invoice ${inv.number} for ${client.name}`}>
       <Page size="A4" style={s.page}>
         <View style={s.head}>
           {company.logoUrl ? <Image src={company.logoUrl} style={{ maxHeight: mm(14), maxWidth: mm(70) }} /> : <Text style={s.name}>{company.name.toUpperCase()}</Text>}
-          <View><Text style={s.no}>Invoice {inv.number}</Text><Text style={s.small}>Issued on {long(inv.issueDate)}</Text></View>
+          <View><Text style={s.no}>{inv.kind === "credit_note" ? "Credit note" : "Invoice"} {inv.number}</Text><Text style={s.small}>Issued on {long(inv.issueDate)}</Text></View>
         </View>
 
         <View style={s.parties}>

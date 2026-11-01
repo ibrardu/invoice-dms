@@ -6,7 +6,7 @@ import { computeTax, type Period, type Treatment } from "./tax";
 /** Loads what computeTax needs for one tenant. Invoices are loaded wide (payments in the period can belong to older invoices). */
 export async function loadTax(tenantId: string, p: Period, basis: "ist" | "soll", currency: string) {
   const invRows = await db.select({ id: invoices.id, number: invoices.number, issueDate: invoices.issueDate, status: invoices.status,
-    totalCents: invoices.totalCents, currency: invoices.currency, client: clients.name, treatment: clients.vatTreatment })
+    totalCents: invoices.totalCents, currency: invoices.currency, client: clients.name, treatment: clients.vatTreatment, creditFor: invoices.creditFor })
     .from(invoices).innerJoin(clients, eq(clients.id, invoices.clientId)).where(eq(invoices.tenantId, tenantId));
   const own = invRows.filter((i) => i.currency === currency);
   const ids = own.map((i) => i.id);
@@ -17,7 +17,7 @@ export async function loadTax(tenantId: string, p: Period, basis: "ist" | "soll"
       .from(expenses).where(and(eq(expenses.tenantId, tenantId), eq(expenses.billable, false))),
   ]);
   const result = computeTax(p, basis,
-    own.map((i) => ({ ...i, treatment: (i.treatment as Treatment) ?? "domestic",
+    own.map((i) => ({ ...i, hasCreditNote: own.some((c) => c.creditFor === i.id), treatment: (i.treatment as Treatment) ?? "domestic",
       lines: lines.filter((l) => l.invoiceId === i.id).map((l) => ({ netCents: l.net, rate: Number(l.rate) })) })),
     pays, exps.map((e) => ({ ...e, vatRate: Number(e.vatRate) })), currency);
   const foreignInvoices = invRows.length - own.length;

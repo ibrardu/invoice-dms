@@ -18,7 +18,7 @@ export default async function Invoices() {
       <div className="card"><table>
         <thead><tr><th>Number</th><th>Client</th><th>Issued</th><th>Due</th><th>Status</th><th className="r">Total</th></tr></thead>
         <tbody>{list.map(({ inv, client }) => <tr key={inv.id}><td><Link href={`/invoices/${inv.id}`}>{inv.number}</Link></td><td>{client}</td>
-          <td>{inv.issueDate}</td><td>{inv.dueDate}</td><td><span className={`badge ${inv.status}`}>{inv.status}</span></td>
+          <td>{inv.issueDate}</td><td>{inv.dueDate}</td><td>{inv.kind === "credit_note" ? <span className="badge">credit note</span> : <span className={`badge ${inv.status}`}>{inv.status}</span>}</td>
           <td className="r">{fmt(inv.totalCents, inv.currency)}</td></tr>)}</tbody>
       </table></div>
     </>

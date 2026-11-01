@@ -42,7 +42,7 @@ export async function sendInvoiceEmail(_: SendState, f: FormData): Promise<SendS
     });
     await db.insert(invoiceEmails).values({ tenantId, invoiceId, kind, toEmail: to.join(", "), cc: cc.join(", "), subject: g("subject"),
       providerMessageId: messageId, submissionKey, sentBy: userId }).onConflictDoNothing();
-    if (inv.status === "draft") await db.update(invoices).set({ status: "sent", updatedAt: new Date() }).where(eq(invoices.id, invoiceId));
+    if (inv.status === "draft") await db.update(invoices).set({ status: "sent", updatedAt: new Date(), lockedAt: new Date() }).where(eq(invoices.id, invoiceId));
     revalidatePath(`/invoices/${invoiceId}`);
     return { ok: true, message: `${kind === "reminder" ? "Reminder" : "Invoice"} sent to ${to.join(", ")}` };
   } catch (e) {

@@ -102,8 +102,9 @@ export async function saveInvoice(f: FormData) {
 
   let id = s(f, "id");
   if (id) {
-    const [own] = await db.select({ id: invoices.id }).from(invoices).where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
+    const [own] = await db.select({ id: invoices.id, lockedAt: invoices.lockedAt }).from(invoices).where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
     if (!own) throw new Error("Not found");
+    if (own.lockedAt) throw new Error("This invoice was sent and is locked. Cancel it with a credit note and issue a new one.");
     await db.update(invoices).set(base).where(eq(invoices.id, id));
     await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
   } else {
@@ -133,17 +134,54 @@ export async function saveInvoice(f: FormData) {
 
 export async function setInvoiceStatus(f: FormData) {
   const { tenantId } = await requireTenant();
-  const status = z.enum(["draft", "sent", "paid", "overdue", "cancelled"]).parse(s(f, "status"));
+  const status = z.enum(["draft", "sent", "paid", "overdue"]).parse(s(f, "status"));
   const id = s(f, "id");
-  await db.update(invoices).set({ status, updatedAt: new Date() }).where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
+  const [inv] = await db.select({ lockedAt: invoices.lockedAt }).from(invoices).where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
+  if (!inv) throw new Error("Not found");
+  if (inv.lockedAt && status === "draft") throw new Error("A sent invoice cannot go back to draft. Cancel it with a credit note instead.");
+  await db.update(invoices).set({ status, updatedAt: new Date(), ...(status !== "draft" && !inv.lockedAt ? { lockedAt: new Date() } : {}) })
+    .where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
   revalidatePath(`/invoices/${id}`);
 }
 
+/** Only drafts can be deleted (GoBD). Sent invoices are cancelled with a credit note. */
 export async function deleteInvoice(f: FormData) {
   const { tenantId } = await requireTenant();
+  const [inv] = await db.select({ lockedAt: invoices.lockedAt }).from(invoices).where(and(eq(invoices.id, s(f, "id")), eq(invoices.tenantId, tenantId)));
+  if (inv?.lockedAt) throw new Error("Sent invoices cannot be deleted. Cancel with a credit note.");
   await db.delete(invoices).where(and(eq(invoices.id, s(f, "id")), eq(invoices.tenantId, tenantId)));
   revalidatePath("/invoices");
   redirect("/invoices");
+}
+
+/** Cancels a sent invoice with a full credit note (Stornorechnung): own number, negated lines, reference to the original. */
+export async function createCreditNote(f: FormData) {
+  const { tenantId, userId } = await requireTenant();
+  const id = s(f, "id");
+  const [orig] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
+  if (!orig || orig.kind !== "invoice") throw new Error("Not found");
+  if (orig.status === "draft") throw new Error("Drafts can simply be edited or deleted");
+  const [existing] = await db.select({ id: invoices.id }).from(invoices).where(and(eq(invoices.tenantId, tenantId), eq(invoices.creditFor, id)));
+  if (existing) redirect(`/invoices/${existing.id}`);                                   // never cancel twice
+  const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+  // Credit notes get their own running series "CN-".
+  let [cn] = await db.select().from(invoiceSeries).where(and(eq(invoiceSeries.tenantId, tenantId), eq(invoiceSeries.prefix, "CN-")));
+  if (!cn) [cn] = await db.insert(invoiceSeries).values({ tenantId, prefix: "CN-", mode: "sequence", nextNumber: 1 }).onConflictDoNothing().returning()
+    .then(async (r) => r.length ? r : db.select().from(invoiceSeries).where(and(eq(invoiceSeries.tenantId, tenantId), eq(invoiceSeries.prefix, "CN-"))));
+  const number = await allocateNumber(tenantId, cn.id, today(), "");
+  const now = new Date();
+  const [note] = await db.insert(invoices).values({
+    tenantId, clientId: orig.clientId, number, kind: "credit_note", creditFor: id, status: "paid", lockedAt: now,
+    issueDate: today(), dueDate: today(), supplyDates: orig.supplyDates, currency: orig.currency,
+    subtotalCents: -orig.subtotalCents, taxCents: -orig.taxCents, totalCents: -orig.totalCents,
+    notes: `Credit note for invoice ${orig.number} dated ${orig.issueDate.split("-").reverse().join(".")}. Storno der Rechnung ${orig.number}.`,
+    createdBy: userId,
+  }).returning({ id: invoices.id });
+  if (items.length) await db.insert(invoiceItems).values(items.map(({ id: _i, invoiceId: _v, ...it }) => ({
+    ...it, invoiceId: note.id, unitPriceCents: -it.unitPriceCents, lineTotalCents: -it.lineTotalCents })));
+  await db.update(invoices).set({ status: "cancelled", updatedAt: now, lockedAt: orig.lockedAt ?? now }).where(eq(invoices.id, id));
+  revalidatePath("/invoices"); revalidatePath("/");
+  redirect(`/invoices/${note.id}`);
 }
 
 export async function addPayment(f: FormData) {
@@ -151,13 +189,14 @@ export async function addPayment(f: FormData) {
   const invoiceId = s(f, "invoiceId");
   const [inv] = await db.select().from(invoices).where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
   if (!inv) throw new Error("Not found");
-  const amount = toCents(s(f, "amount"));
-  if (amount <= 0) throw new Error("Amount must be positive");
+  let amount = toCents(s(f, "amount"));
+  if (inv.kind === "credit_note") amount = -Math.abs(amount);       // refund paid back to the client
+  else if (amount <= 0) throw new Error("Amount must be positive");
   await db.insert(payments).values({ tenantId, invoiceId, amountCents: amount, paidOn: s(f, "paidOn") || today(),
     method: s(f, "method"), reference: s(f, "reference") });
   const [{ paid }] = await db.select({ paid: sql<number>`coalesce(sum(${payments.amountCents}),0)::int` })
     .from(payments).where(eq(payments.invoiceId, invoiceId));
-  if (paid >= inv.totalCents) await db.update(invoices).set({ status: "paid" }).where(eq(invoices.id, invoiceId));
+  if (inv.kind === "invoice" && paid >= inv.totalCents) await db.update(invoices).set({ status: "paid", lockedAt: inv.lockedAt ?? new Date() }).where(eq(invoices.id, invoiceId));
   revalidatePath(`/invoices/${invoiceId}`);
 }
 

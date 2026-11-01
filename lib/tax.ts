@@ -1,7 +1,7 @@
 // German VAT pre-return (UStVA) and EÜR figures, computed from invoices, payments and expenses.
 // Pure function: data in, figures out. Kennzahl numbers follow the UStVA form (check against the current year's form).
 export type Treatment = "domestic" | "eu_reverse" | "non_eu";
-export type TaxInvoice = { id: string; number: string; client: string; treatment: Treatment; issueDate: string; status: string; totalCents: number;
+export type TaxInvoice = { id: string; number: string; client: string; treatment: Treatment; issueDate: string; status: string; totalCents: number; hasCreditNote?: boolean;
   lines: { netCents: number; rate: number }[] };
 export type TaxPayment = { invoiceId: string; paidOn: string; amountCents: number };
 export type TaxExpense = { spentOn: string; grossCents: number; vatRate: number; currency: string; category: string };
@@ -25,15 +25,17 @@ export function computeTax(p: Period, basis: "ist" | "soll", invoices: TaxInvoic
     income: { taxableNetCents: 0, nonTaxableNetCents: 0, vatReceivedCents: 0 }, expenses: [], warnings: [], sources: [] };
 
   for (const inv of invoices) {
-    if (inv.status === "draft" || inv.status === "cancelled") continue;
+    // Drafts never count. A cancelled invoice still counts if a credit note reverses it (the credit note carries the minus).
+    if (inv.status === "draft" || (inv.status === "cancelled" && !inv.hasCreditNote)) continue;
     // Share of the invoice that falls in this period: Ist = paid in period / total, Soll = issued in period.
     let share = 0;
     if (basis === "soll") share = inP(inv.issueDate, p) ? 1 : 0;
-    else if (inv.totalCents > 0) {
+    else if (inv.totalCents !== 0) {
+      // Ist: share actually paid in the period. For a credit note that is the refund (negative over negative).
       const paid = payments.filter((x) => x.invoiceId === inv.id && inP(x.paidOn, p)).reduce((a, x) => a + x.amountCents, 0);
       share = Math.min(1, paid / inv.totalCents);
     }
-    if (!share) continue;
+    if (share <= 0) continue;
     r.sources.push({ number: inv.number, client: inv.client, share, treatment: inv.treatment });
     for (const l of inv.lines) {
       const net = Math.round(l.netCents * share);
