@@ -3,20 +3,30 @@ import { requireTenant } from "@/lib/auth";
 import { loadInvoice } from "@/lib/invoice-data";
 import { setInvoiceStatus, deleteInvoice, addPayment } from "@/lib/actions";
 import { fmt, today } from "@/lib/money";
+import { desc, eq } from "drizzle-orm";
+import { db, invoiceEmails } from "@/lib/db";
+import { emailEnabled, fillTemplate } from "@/lib/email";
+import SendEmail from "./SendEmail";
 
 export const dynamic = "force-dynamic";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { tenantId } = await requireTenant();
   const { id } = await params;
-  const { inv, client, items, payments, documents } = await loadInvoice(tenantId, id);
+  const { inv, client, items, payments, documents, company } = await loadInvoice(tenantId, id);
+  const sent = await db.select().from(invoiceEmails).where(eq(invoiceEmails.invoiceId, id)).orderBy(desc(invoiceEmails.sentAt));
+  const longDate = (d: string) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   const paid = payments.reduce((a, p) => a + p.amountCents, 0);
+  const daysLate = Math.max(0, Math.round((Date.parse(today()) - Date.parse(inv.dueDate)) / 86400000));
+  const vars = { number: inv.number, company: company.name, client: client.name, contact: client.contactName || client.name,
+    total: fmt(inv.totalCents, inv.currency), balance: fmt(inv.totalCents - paid, inv.currency), due: longDate(inv.dueDate), days: String(daysLate) };
   return (
     <>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h1>{inv.number} <span className={`badge ${inv.status}`}>{inv.status}</span></h1>
         <div className="row">
-          <a className="btn" href={`/invoices/${id}/print`} target="_blank">View / PDF</a>
+          <a className="btn" href={`/api/invoices/${id}/pdf`} target="_blank">PDF</a>
+          <a className="btn ghost" href={`/invoices/${id}/print`} target="_blank">Print view</a>
           <Link className="btn ghost" href={`/invoices/new?id=${id}`}>Edit</Link>
           <form action={deleteInvoice}><input type="hidden" name="id" value={id} /><button className="danger">Delete</button></form>
         </div>
@@ -42,6 +52,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           <div><label>Reference</label><input name="reference" /></div>
           <div><button>Record payment</button></div>
         </form>
+      </div>
+      <div className="card"><h2>Send by email</h2>
+        <SendEmail invoiceId={id} enabled={emailEnabled()} overdue={inv.status === "overdue"}
+          invoice={{ to: client.email, subject: fillTemplate(company.emailSubject, vars), body: fillTemplate(company.emailBody, vars) }}
+          reminder={{ to: client.email, subject: fillTemplate(company.reminderSubject, vars), body: fillTemplate(company.reminderBody, vars) }} />
+        {sent.length > 0 && <table style={{ marginTop: 16 }}><thead><tr><th>Sent</th><th>Type</th><th>To</th><th>Subject</th></tr></thead>
+          <tbody>{sent.map((e) => <tr key={e.id}><td className="num">{e.sentAt.toISOString().slice(0, 16).replace("T", " ")}</td>
+            <td>{e.kind === "reminder" ? "Reminder" : "Invoice"}</td><td>{e.toEmail}{e.cc && <div className="muted">cc {e.cc}</div>}</td><td>{e.subject}</td></tr>)}</tbody></table>}
       </div>
       <div className="card"><h2>Attached documents</h2>
         {documents.length ? <ul>{documents.map((d) => <li key={d.id}><a href={`/api/documents/${d.id}`}>{d.title}</a></li>)}</ul> : <p className="muted">None. Upload in Documents and link to this invoice.</p>}
