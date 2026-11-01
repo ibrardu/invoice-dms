@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, numeric, date, timestamp, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, pgTable, uuid, text, integer, numeric, date, timestamp, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 // tenantId = Clerk organization id, or user id for single users. Every query is scoped by it.
 
@@ -12,6 +12,12 @@ export const companies = pgTable("companies", {
   phone: text("phone").notNull().default(""),
   taxId: text("tax_id").notNull().default(""),
   bankDetails: text("bank_details").notNull().default(""),
+  // Payment QR (EPC / GiroCode) and optional online payment link
+  accountHolder: text("account_holder").notNull().default(""),
+  iban: text("iban").notNull().default(""),
+  bic: text("bic").notNull().default(""),
+  paymentLink: text("payment_link").notNull().default(""),
+  showPaymentQr: boolean("show_payment_qr").notNull().default(true),
   logoUrl: text("logo_url").notNull().default(""),
   currency: text("currency").notNull().default("EUR"),
   defaultTaxRate: numeric("default_tax_rate", { precision: 5, scale: 2 }).notNull().default("0"),
@@ -23,6 +29,18 @@ export const companies = pgTable("companies", {
   footerNote: text("footer_note").notNull().default("Please reference your invoice number in the payment details for proper allocation."),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// Invoice number series. mode "sequence": PREFIX + running number (e.g. #61927).
+// mode "date": PREFIX + DDMMYYYY of the chosen date (e.g. TSM18092026); duplicates get -2, -3...
+export const invoiceSeries = pgTable("invoice_series", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
+  prefix: text("prefix").notNull(),
+  mode: text("mode").notNull().default("sequence"),
+  nextNumber: integer("next_number").notNull().default(1),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("series_tenant_prefix_uq").on(t.tenantId, t.prefix)]);
 
 export const clients = pgTable("clients", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -36,6 +54,7 @@ export const clients = pgTable("clients", {
   notes: text("notes").notNull().default(""),
   // Pricing for SVR-generated lines. 0 = fall back to company hourly rate.
   // hourly | half_full (half-day / full-day by hours) | full_day (fixed per day) | task (fixed per task/visit)
+  defaultSeriesId: uuid("default_series_id"),
   pricingMode: text("pricing_mode").notNull().default("half_full"),
   taskRateCents: integer("task_rate_cents").notNull().default(0),
   halfDayRateCents: integer("half_day_rate_cents").notNull().default(0),

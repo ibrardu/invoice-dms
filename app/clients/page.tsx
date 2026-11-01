@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { db, clients } from "@/lib/db";
 import { requireTenant } from "@/lib/auth";
-import { saveClient, deleteClient } from "@/lib/actions";
+import { saveClient, deleteClient, listSeries } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,7 @@ export default async function Clients({ searchParams }: { searchParams: Promise<
   const { edit } = await searchParams;
   const list = await db.select().from(clients).where(eq(clients.tenantId, tenantId)).orderBy(asc(clients.name));
   const e = list.find((c) => c.id === edit);
+  const series = await listSeries(tenantId);
   return (
     <>
       <h1>Clients</h1>
@@ -27,6 +28,8 @@ export default async function Clients({ searchParams }: { searchParams: Promise<
         <h2 style={{ marginTop: 16 }}>Pricing for site visits</h2>
         <p className="muted">Default way to price lines generated from SVRs. You can switch mode per import on the invoice page.</p>
         <div className="grid">
+          <div><label>Invoice number prefix</label><select name="defaultSeriesId" defaultValue={e?.defaultSeriesId ?? ""}>
+            <option value="">Use default</option>{series.map((x) => <option key={x.id} value={x.id}>{x.prefix} ({x.mode === "date" ? "date" : "running"})</option>)}</select></div>
           <div><label>Default pricing mode</label><select name="pricingMode" defaultValue={e?.pricingMode ?? "half_full"}>
             <option value="half_full">Half / full day (by hours on site)</option>
             <option value="full_day">Fixed full-day rate</option>

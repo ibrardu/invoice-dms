@@ -15,8 +15,12 @@
 .inv-items tbody tr:last-child td{border-bottom:.4pt solid #000}
 .inv-items tfoot th{font-weight:700}
 .inv-items tfoot tr.grand th,.inv-items tfoot tr.grand td{border-top:.4pt solid #000}
-.inv-note{margin-top:10mm;background:#F5F5F5;border-radius:2mm;padding:3mm}.inv-note b{display:block;margin-bottom:3mm}
+.inv-pay{display:flex;gap:6mm;align-items:flex-start;margin-top:10mm}
+.inv-note{flex:1;background:#F5F5F5;border-radius:2mm;padding:3mm}.inv-note b{display:block;margin-bottom:3mm}
 .inv-foot{margin-top:auto;padding-top:0;display:grid;grid-template-columns:33fr 33fr 34fr;font-size:9pt;line-height:1.35}
 .inv-foot::before{content:"";grid-column:1/-1;height:.8pt;background:#F5F5F5;margin-bottom:5mm}
 .inv-foot h4{margin:0 0 1mm;font-size:9pt;color:#808080;text-transform:uppercase;font-weight:700}
 @media print{@page{size:A4;margin:0}body{background:#fff}.no-print,.top{display:none!important}main{padding:0;max-width:none}.inv{box-shadow:none;margin:0}}
+.inv-qr{width:34mm;font-size:7.5pt;line-height:1.3;text-align:center;color:#333}
+.inv-qr .qr svg{width:30mm;height:30mm;display:block;margin:0 auto 1.5mm}
+.inv-qr a{color:#000;text-decoration:underline}

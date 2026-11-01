@@ -8,6 +8,20 @@
       "when": 1793553020038,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793564679361,
+      "tag": "0001_payment_qr",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793564734450,
+      "tag": "0002_invoice_series",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { requireTenant } from "@/lib/auth";
 import { loadInvoice } from "@/lib/invoice-data";
 import PrintButton from "./PrintButton";
+import { epcQrSvg } from "@/lib/epc-qr";
 import "./invoice.css";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,12 @@ const long = (d: string) => new Date(d + "T00:00:00Z").toLocaleDateString("en-US
 export default async function PrintInvoice({ params }: { params: Promise<{ id: string }> }) {
   const { tenantId } = await requireTenant();
   const { id } = await params;
-  const { inv, client, items, company } = await loadInvoice(tenantId, id);
+  const { inv, client, items, company, payments } = await loadInvoice(tenantId, id);
+  const balance = inv.totalCents - payments.reduce((a, p) => a + p.amountCents, 0);
+  const qr = company.showPaymentQr && balance > 0 && inv.status !== "cancelled"
+    ? await epcQrSvg({ name: company.accountHolder || company.name, iban: company.iban, bic: company.bic,
+        amountCents: balance, currency: inv.currency, reference: `Invoice ${inv.number}` })
+    : null;
   const sym = new Intl.NumberFormat("en", { style: "currency", currency: inv.currency }).formatToParts(0).find((p) => p.type === "currency")?.value ?? inv.currency;
   const m = (cents: number) => `${sym}\u2009${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const addrLines = company.address.split(/\n/).map((l) => l.trim()).filter(Boolean);
@@ -58,10 +64,17 @@ export default async function PrintInvoice({ params }: { params: Promise<{ id: s
           </table>
         </section>
 
-        {(inv.notes || company.footerNote) && <section className="inv-note">
-          <b>Invoice note</b>
-          <div className="pre">{[inv.notes, company.footerNote].filter(Boolean).join("\n")}</div>
-        </section>}
+        <div className="inv-pay">
+          {(inv.notes || company.footerNote) && <section className="inv-note">
+            <b>Invoice note</b>
+            <div className="pre">{[inv.notes, company.footerNote].filter(Boolean).join("\n")}</div>
+          </section>}
+          {(qr || company.paymentLink) && <section className="inv-qr">
+            {qr && <div className="qr" dangerouslySetInnerHTML={{ __html: qr }} />}
+            <div>{qr && <>Scan to pay {m(balance)}<br />with your banking app</>}
+              {company.paymentLink && <div><a href={company.paymentLink}>Pay online</a></div>}</div>
+          </section>}
+        </div>
 
         <footer className="inv-foot">
           <div><h4>Address</h4><div>{company.name.toUpperCase()}</div>{addrLines.map((l, i) => <div key={i}>{l}</div>)}</div>

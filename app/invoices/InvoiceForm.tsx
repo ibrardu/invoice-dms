@@ -1,15 +1,18 @@
 "use client";
 import { useState } from "react";
-import { saveInvoice } from "@/lib/actions";
+import { useEffect } from "react";
+import { saveInvoice, previewNumber } from "@/lib/actions";
 import { extractSvr, type Visit } from "@/lib/svr";
 import { priceVisit, hoursBetween, type Mode, type Rates } from "@/lib/pricing";
 
 type Item = { description: string; quantity: number; unitPrice: number; taxRate: number; visitKey?: string };
 type RVisit = Visit & { mode: Mode; rates: Rates; tax: number };
-type Props = { clients: { id: string; name: string }[]; currency: string; defaultTax: number;
-  initial?: { id: string; clientId: string; issueDate: string; dueDate: string; notes: string; supplyDates: string; items: Item[] } };
+type Series = { id: string; prefix: string; mode: string; isDefault: boolean };
+type Props = { series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
+  initial?: { id: string; number: string; clientId: string; issueDate: string; dueDate: string; notes: string; supplyDates: string; items: Item[] } };
 
-export default function InvoiceForm({ clients, currency, defaultTax, initial }: Props) {
+export default function InvoiceForm({ clients, currency, defaultTax, initial, series }: Props) {
+  const defSeries = series.find((x) => x.isDefault)?.id ?? series[0]?.id ?? "";
   const blank = (): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: defaultTax });
   const [items, setItems] = useState<Item[]>(initial?.items ?? [blank()]);
   const upd = (i: number, k: keyof Item, v: string) => setItems(items.map((it, j) => j === i ? { ...it, [k]: k === "description" ? v : Number(v) } : it));
@@ -21,6 +24,20 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial }: 
   const [issueDate, setIssueDate] = useState(initial?.issueDate ?? "");
   const [supply, setSupply] = useState(initial?.supplyDates ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [seriesId, setSeriesId] = useState(defSeries);
+  const [numberDate, setNumberDate] = useState("");
+  const [manual, setManual] = useState("");
+  const [preview, setPreview] = useState("");
+  const cur = series.find((x) => x.id === seriesId);
+  // Date for date-based numbers: first SVR visit, else the issue date, else today.
+  const firstVisit = visits.map((v) => v.date).filter(Boolean).sort()[0] ?? "";
+  const effDate = numberDate || firstVisit || issueDate || new Date().toISOString().slice(0, 10);
+  useEffect(() => { if (!initial) previewNumber(seriesId, effDate).then(setPreview).catch(() => setPreview("")); }, [seriesId, effDate, initial]);
+  function pickClient(id: string) {
+    setClientId(id);
+    const c = clients.find((x) => x.id === id);
+    if (!initial && c?.seriesId && series.some((x) => x.id === c.seriesId)) setSeriesId(c.seriesId);
+  }
 
   async function importSvr(fd: FormData) {
     if (!clientId) { setSvrMsg("Select the client first so the right rates are used."); return; }
@@ -77,11 +94,22 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial }: 
       <input type="hidden" name="id" defaultValue={initial?.id} />
       <input type="hidden" name="items" value={JSON.stringify(items.map(({ visitKey: _k, ...it }) => it))} />
       <div className="grid">
-        <div><label>Client *</label><select name="clientId" required value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <div><label>Client *</label><select name="clientId" required value={clientId} onChange={(e) => pickClient(e.target.value)}>
           <option value="" disabled>Select client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
         <div><label>Issue date</label><input type="date" name="issueDate" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} /></div>
         <div><label>Date of sale / supply</label><input name="supplyDates" value={supply} onChange={(e) => setSupply(e.target.value)} placeholder="June 9, 16, 18 & 19 2026" /></div>
         <div><label>Due date (blank = payment terms)</label><input type="date" name="dueDate" defaultValue={initial?.dueDate} /></div>
+      </div>
+      <div className="grid" style={{ marginTop: 12 }}>
+        {!initial && <>
+          <div><label>Number prefix</label><select name="seriesId" value={seriesId} onChange={(e) => setSeriesId(e.target.value)}>
+            {series.map((x) => <option key={x.id} value={x.id}>{x.prefix} ({x.mode === "date" ? "DDMMYYYY" : "running number"})</option>)}</select></div>
+          {cur?.mode === "date" && <div><label>Date in number</label><input type="date" value={effDate} onChange={(e) => setNumberDate(e.target.value)} /></div>}
+        </>}
+        <input type="hidden" name="numberDate" value={effDate} />
+        <div><label>{initial ? "Invoice number" : "Override number (optional)"}</label>
+          <input name="manualNumber" value={manual} onChange={(e) => setManual(e.target.value)} placeholder={initial ? initial.number : preview} /></div>
+        <div><label>Invoice number will be</label><div style={{ padding: "8px 0", fontWeight: 600 }}>{manual || (initial ? initial.number : preview || "...")}</div></div>
       </div>
       <table style={{ marginTop: 16 }}>
         <thead><tr><th style={{ width: "45%" }}>Description</th><th>Qty</th><th>Unit price</th><th>Tax %</th><th className="r">Amount</th><th></th></tr></thead>
