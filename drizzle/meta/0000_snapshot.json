@@ -1,5 +1,5 @@
 {
-  "id": "e9c8e850-9e92-4a63-8950-2c431dc338e6",
+  "id": "d5aaf4fc-95af-4555-bf26-ff73c5cca6fc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -68,6 +68,41 @@
           "primaryKey": false,
           "notNull": true,
           "default": "''"
+        },
+        "half_day_rate_cents": {
+          "name": "half_day_rate_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "full_day_rate_cents": {
+          "name": "full_day_rate_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "half_day_max_hours": {
+          "name": "half_day_max_hours",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'4'"
+        },
+        "hourly_rate_cents": {
+          "name": "hourly_rate_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "travel_flat_cents": {
+          "name": "travel_flat_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",

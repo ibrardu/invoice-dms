@@ -39,7 +39,10 @@ export async function saveClient(f: FormData) {
   const name = s(f, "name");
   if (!name) throw new Error("Client name is required");
   const data = { name, contactName: s(f, "contactName"), email: s(f, "email"), phone: s(f, "phone"),
-    address: s(f, "address"), taxId: s(f, "taxId"), notes: s(f, "notes") };
+    address: s(f, "address"), taxId: s(f, "taxId"), notes: s(f, "notes"),
+    halfDayRateCents: toCents(s(f, "halfDayRate")), fullDayRateCents: toCents(s(f, "fullDayRate")),
+    halfDayMaxHours: String(Number(s(f, "halfDayMaxHours")) || 4), hourlyRateCents: toCents(s(f, "hourlyRate")),
+    travelFlatCents: toCents(s(f, "travelFlat")) };
   const id = s(f, "id");
   if (id) await db.update(clients).set(data).where(and(eq(clients.id, id), eq(clients.tenantId, tenantId)));
   else await db.insert(clients).values({ ...data, tenantId });
@@ -94,9 +97,8 @@ export async function saveInvoice(f: FormData) {
     [{ id }] = await db.insert(invoices).values({ ...base, tenantId, number, createdBy: userId }).returning({ id: invoices.id });
   }
   await db.insert(invoiceItems).values(lines.map(({ tax: _t, ...l }) => ({ ...l, invoiceId: id })));
-  const svrDocId = s(f, "svrDocId");
-  if (svrDocId) await db.update(documents).set({ invoiceId: id, clientId })
-    .where(and(eq(documents.id, svrDocId), eq(documents.tenantId, tenantId)));
+  for (const docId of s(f, "svrDocIds").split(",").filter(Boolean))
+    await db.update(documents).set({ invoiceId: id, clientId }).where(and(eq(documents.id, docId), eq(documents.tenantId, tenantId)));
   revalidatePath("/invoices");
   redirect(`/invoices/${id}`);
 }

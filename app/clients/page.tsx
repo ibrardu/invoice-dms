@@ -24,6 +24,15 @@ export default async function Clients({ searchParams }: { searchParams: Promise<
           <div><label>Address</label><textarea name="address" rows={3} defaultValue={e?.address} /></div>
           <div><label>Notes</label><textarea name="notes" rows={3} defaultValue={e?.notes} /></div>
         </div>
+        <h2 style={{ marginTop: 16 }}>Pricing for site visits</h2>
+        <p className="muted">Used when generating lines from SVRs. Visits up to the half-day hours use the half-day rate, longer visits the full-day rate. Leave day rates at 0 to bill hourly.</p>
+        <div className="grid">
+          <div><label>Half-day rate</label><input name="halfDayRate" type="number" step="0.01" defaultValue={((e?.halfDayRateCents ?? 0) / 100).toFixed(2)} /></div>
+          <div><label>Half-day up to (hours)</label><input name="halfDayMaxHours" type="number" step="0.25" defaultValue={e?.halfDayMaxHours ?? "4"} /></div>
+          <div><label>Full-day rate</label><input name="fullDayRate" type="number" step="0.01" defaultValue={((e?.fullDayRateCents ?? 0) / 100).toFixed(2)} /></div>
+          <div><label>Hourly rate</label><input name="hourlyRate" type="number" step="0.01" defaultValue={((e?.hourlyRateCents ?? 0) / 100).toFixed(2)} /></div>
+          <div><label>Travel flat fee per visit</label><input name="travelFlat" type="number" step="0.01" defaultValue={((e?.travelFlatCents ?? 0) / 100).toFixed(2)} /></div>
+        </div>
         <p><button>{e ? "Save changes" : "Add client"}</button></p>
       </form>
       <div className="card">

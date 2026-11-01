@@ -5,7 +5,7 @@ Invoice generator and small document management system.
 - **Stack:** Next.js 15, Neon Postgres (Drizzle ORM), Clerk login (2FA and passkeys), private Vercel Blob storage
 - **Invoices:** clients, invoices with line items and tax, automatic numbering, status (draft, sent, paid, overdue, cancelled), payments, and a print/PDF layout matching the house design
 - **Documents:** upload, categorise, tag and search files, and link them to clients and invoices. Downloads only go through a route that checks your login.
-- **SVR import (optional):** upload a Site Visit Report (PDF or text) on the New Invoice page. Llama pulls out visit dates, times, hours and materials and pre-fills the invoice lines using your hourly rates. The SVR is saved in Documents and linked to the invoice.
+- **SVR import (optional):** on the New Invoice page, pick the client and upload one or more Site Visit Reports (PDF). Llama reads the date, time on and off site, tickets, site, and any expenses (taxi, cables, etc.). One "Support dd.mm.yyyy" line is added per visit, priced with the client's half-day, full-day or hourly rate (set on the Clients page). Visits with missing times are flagged. The SVRs are saved in Documents and linked to the invoice.
 
 ## Deploy on Vercel
 1. Import this repo in Vercel.

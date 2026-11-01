@@ -34,6 +34,12 @@ export const clients = pgTable("clients", {
   address: text("address").notNull().default(""),
   taxId: text("tax_id").notNull().default(""),
   notes: text("notes").notNull().default(""),
+  // Pricing for SVR-generated lines. 0 = fall back to company hourly rate.
+  halfDayRateCents: integer("half_day_rate_cents").notNull().default(0),
+  fullDayRateCents: integer("full_day_rate_cents").notNull().default(0),
+  halfDayMaxHours: numeric("half_day_max_hours", { precision: 4, scale: 2 }).notNull().default("4"),
+  hourlyRateCents: integer("hourly_rate_cents").notNull().default(0),
+  travelFlatCents: integer("travel_flat_cents").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [index("clients_tenant_idx").on(t.tenantId)]);
 

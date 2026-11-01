@@ -9,6 +9,11 @@ CREATE TABLE "clients" (
 	"address" text DEFAULT '' NOT NULL,
 	"tax_id" text DEFAULT '' NOT NULL,
 	"notes" text DEFAULT '' NOT NULL,
+	"half_day_rate_cents" integer DEFAULT 0 NOT NULL,
+	"full_day_rate_cents" integer DEFAULT 0 NOT NULL,
+	"half_day_max_hours" numeric(4, 2) DEFAULT '4' NOT NULL,
+	"hourly_rate_cents" integer DEFAULT 0 NOT NULL,
+	"travel_flat_cents" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
