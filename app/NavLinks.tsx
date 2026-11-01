@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const LINKS = [["/", "Overview"], ["/invoices", "Invoices"], ["/clients", "Clients"], ["/expenses", "Expenses"], ["/documents", "Documents"], ["/export", "Export"], ["/settings", "Settings"]] as const;
+const LINKS = [["/", "Overview"], ["/invoices", "Invoices"], ["/clients", "Clients"], ["/expenses", "Expenses"], ["/bank", "Bank"], ["/documents", "Documents"], ["/export", "Export"], ["/settings", "Settings"]] as const;
 
 export default function NavLinks({ elster = false }: { elster?: boolean }) {
   const path = usePathname();
