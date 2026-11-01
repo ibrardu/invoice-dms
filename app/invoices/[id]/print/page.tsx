@@ -24,6 +24,10 @@ export default async function PrintInvoice({ params }: { params: Promise<{ id: s
     <div className="inv-wrap">
       <PrintButton />
       <article className="inv">
+        {/* Layout table: thead/tfoot spacers repeat on every printed page so content never runs under the footer. */}
+        <table className="inv-layout"><thead><tr><td><div className="sp-top" /></td></tr></thead>
+        <tfoot><tr><td><div className="sp-bot" /></td></tr></tfoot>
+        <tbody><tr><td>
         <header className="inv-head">
           {company.logoUrl ? <img src={company.logoUrl} alt="" className="inv-logo" /> : <div className="inv-name">{company.name.toUpperCase()}</div>}
           <div className="r">
@@ -75,6 +79,8 @@ export default async function PrintInvoice({ params }: { params: Promise<{ id: s
               {company.paymentLink && <div><a href={company.paymentLink}>Pay online</a></div>}</div>
           </section>}
         </div>
+
+        </td></tr></tbody></table>
 
         <footer className="inv-foot">
           <div><h4>Address</h4><div>{company.name.toUpperCase()}</div>{addrLines.map((l, i) => <div key={i}>{l}</div>)}</div>
