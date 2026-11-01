@@ -1,11 +1,11 @@
 import { requireTenant } from "@/lib/auth";
-import { getCompany, saveSettings } from "@/lib/actions";
+import { getCompany, saveSettings, listSeries, saveSeries, deleteSeries } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function Settings() {
   const { tenantId } = await requireTenant();
-  const c = await getCompany(tenantId);
+  const [c, series] = await Promise.all([getCompany(tenantId), listSeries(tenantId)]);
   const field = (k: keyof typeof c, l: string, type = "text") =>
     <div key={k}><label>{l}</label><input name={k} type={type} defaultValue={String(c[k] ?? "")} /></div>;
   return (
@@ -17,7 +17,7 @@ export default async function Settings() {
           {field("logoUrl", "Logo URL")}{field("currency", "Currency (e.g. EUR)")}{field("defaultTaxRate", "Default tax %", "number")}
           <div><label>Hourly labour rate</label><input name="hourlyRate" type="number" step="0.01" defaultValue={(c.hourlyRateCents / 100).toFixed(2)} /></div>
           <div><label>Hourly travel rate</label><input name="travelRate" type="number" step="0.01" defaultValue={(c.travelRateCents / 100).toFixed(2)} /></div>
-          {field("paymentTermsDays", "Payment terms (days)", "number")}{field("invoicePrefix", "Invoice prefix")}{field("nextInvoiceNumber", "Next invoice number", "number")}
+          {field("paymentTermsDays", "Payment terms (days)", "number")}
         </div>
         <div className="grid" style={{ marginTop: 12 }}>
           <div><label>Address</label><textarea name="address" rows={4} defaultValue={c.address} /></div>
@@ -33,6 +33,29 @@ export default async function Settings() {
         </div>
         <p><button>Save</button></p>
       </form>
+
+      <div className="card">
+        <h2>Invoice numbering</h2>
+        <p className="muted">Add as many prefixes as you need. <b>Running number</b>: prefix + next number (e.g. #61927). <b>Date</b>: prefix + DDMMYYYY of the supply or issue date (e.g. TSM18092026); a second invoice on the same date gets -2.</p>
+        <table><thead><tr><th>Prefix</th><th>Type</th><th>Next number</th><th>Default</th><th></th></tr></thead>
+          <tbody>{series.map((x) => <tr key={x.id}><td colSpan={5}>
+            <form action={saveSeries} className="row">
+              <input type="hidden" name="id" value={x.id} />
+              <input name="prefix" defaultValue={x.prefix} style={{ width: 120 }} />
+              <select name="mode" defaultValue={x.mode} style={{ width: 170 }}><option value="sequence">Running number</option><option value="date">Date DDMMYYYY</option></select>
+              <input name="nextNumber" type="number" min="1" defaultValue={x.nextNumber} style={{ width: 110 }} />
+              <label style={{ margin: 0 }}><input type="checkbox" name="isDefault" defaultChecked={x.isDefault} style={{ width: "auto" }} /> default</label>
+              <button className="ghost">Save</button>
+              <button formAction={deleteSeries} className="danger" disabled={series.length <= 1}>Delete</button>
+            </form></td></tr>)}</tbody></table>
+        <form action={saveSeries} className="row" style={{ marginTop: 12 }}>
+          <input name="prefix" placeholder="New prefix e.g. TSM" style={{ width: 160 }} required />
+          <select name="mode" defaultValue="date" style={{ width: 170 }}><option value="sequence">Running number</option><option value="date">Date DDMMYYYY</option></select>
+          <input name="nextNumber" type="number" min="1" defaultValue={1} style={{ width: 110 }} />
+          <label style={{ margin: 0 }}><input type="checkbox" name="isDefault" style={{ width: "auto" }} /> default</label>
+          <button>Add prefix</button>
+        </form>
+      </div>
     </>
   );
 }

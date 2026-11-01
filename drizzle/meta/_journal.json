@@ -15,6 +15,13 @@
       "when": 1793564679361,
       "tag": "0001_payment_qr",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793564734450,
+      "tag": "0002_invoice_series",
+      "breakpoints": true
     }
   ]
 }

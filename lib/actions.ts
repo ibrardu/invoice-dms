@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { put, del } from "@vercel/blob";
 import { z } from "zod";
-import { db, clients, companies, invoices, invoiceItems, payments, documents } from "./db";
+import { db, clients, companies, invoices, invoiceItems, payments, documents, invoiceSeries } from "./db";
 import { requireTenant } from "./auth";
 import { toCents, today, addDays } from "./money";
 
@@ -29,8 +29,7 @@ export async function saveSettings(f: FormData) {
     showPaymentQr: f.get("showPaymentQr") === "on", logoUrl: s(f, "logoUrl"),
     currency: s(f, "currency") || "EUR", defaultTaxRate: String(Number(s(f, "defaultTaxRate")) || 0),
     hourlyRateCents: toCents(s(f, "hourlyRate")), travelRateCents: toCents(s(f, "travelRate")),
-    paymentTermsDays: Number(s(f, "paymentTermsDays")) || 0, invoicePrefix: s(f, "invoicePrefix"),
-    nextInvoiceNumber: Math.max(1, Number(s(f, "nextInvoiceNumber")) || 1), footerNote: s(f, "footerNote"),
+    paymentTermsDays: Number(s(f, "paymentTermsDays")) || 0, footerNote: s(f, "footerNote"),
     updatedAt: new Date(),
   }).where(eq(companies.tenantId, tenantId));
   revalidatePath("/settings");
@@ -43,6 +42,7 @@ export async function saveClient(f: FormData) {
   if (!name) throw new Error("Client name is required");
   const data = { name, contactName: s(f, "contactName"), email: s(f, "email"), phone: s(f, "phone"),
     address: s(f, "address"), taxId: s(f, "taxId"), notes: s(f, "notes"),
+    defaultSeriesId: /^[0-9a-f-]{36}$/.test(s(f, "defaultSeriesId")) ? s(f, "defaultSeriesId") : null,
     pricingMode: z.enum(["hourly", "half_full", "full_day", "task"]).catch("half_full").parse(s(f, "pricingMode")),
     taskRateCents: toCents(s(f, "taskRate")),
     halfDayRateCents: toCents(s(f, "halfDayRate")), fullDayRateCents: toCents(s(f, "fullDayRate")),
@@ -93,13 +93,14 @@ export async function saveInvoice(f: FormData) {
     await db.update(invoices).set(base).where(eq(invoices.id, id));
     await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
   } else {
-    // Atomically reserve the next invoice number.
-    const [{ n }] = await db.update(companies)
-      .set({ nextInvoiceNumber: sql`${companies.nextInvoiceNumber} + 1` })
-      .where(eq(companies.tenantId, tenantId))
-      .returning({ n: sql<number>`${companies.nextInvoiceNumber} - 1` });
-    const number = `${company.invoicePrefix}${n}`;
+    const number = await allocateNumber(tenantId, s(f, "seriesId"), s(f, "numberDate") || issueDate, s(f, "manualNumber"));
     [{ id }] = await db.insert(invoices).values({ ...base, tenantId, number, createdBy: userId }).returning({ id: invoices.id });
+  }
+  if (s(f, "id") && s(f, "manualNumber")) {
+    const want = s(f, "manualNumber");
+    const [clash] = await db.select({ id: invoices.id }).from(invoices).where(and(eq(invoices.tenantId, tenantId), eq(invoices.number, want)));
+    if (clash && clash.id !== id) throw new Error(`Invoice number ${want} is already used`);
+    await db.update(invoices).set({ number: want }).where(eq(invoices.id, id));
   }
   await db.insert(invoiceItems).values(lines.map(({ tax: _t, ...l }) => ({ ...l, invoiceId: id })));
   const svrVisits = z.array(z.object({ docId: z.string().uuid(), date: z.string().nullable(), hours: z.number() }))
@@ -168,4 +169,84 @@ export async function deleteDocument(f: FormData) {
   const [d] = await db.delete(documents).where(and(eq(documents.id, s(f, "id")), eq(documents.tenantId, tenantId))).returning();
   if (d) await del(d.blobPath).catch(() => {});
   revalidatePath("/documents");
+}
+
+/* ---------- invoice number series ---------- */
+export async function listSeries(tenantId: string) {
+  let list = await db.select().from(invoiceSeries).where(eq(invoiceSeries.tenantId, tenantId)).orderBy(invoiceSeries.prefix);
+  if (!list.length) {
+    const c = await getCompany(tenantId);
+    await db.insert(invoiceSeries).values({ tenantId, prefix: c.invoicePrefix || "#", mode: "sequence", nextNumber: c.nextInvoiceNumber, isDefault: true }).onConflictDoNothing();
+    list = await db.select().from(invoiceSeries).where(eq(invoiceSeries.tenantId, tenantId));
+  }
+  return list;
+}
+
+const ddmmyyyy = (d: string) => { const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) throw new Error("Pick a valid date for the invoice number"); return `${m[3]}${m[2]}${m[1]}`; };
+
+async function numberTaken(tenantId: string, number: string) {
+  const [r] = await db.select({ id: invoices.id }).from(invoices).where(and(eq(invoices.tenantId, tenantId), eq(invoices.number, number)));
+  return !!r;
+}
+
+/** Manual number wins; otherwise the chosen (or default) series decides. */
+async function allocateNumber(tenantId: string, seriesId: string, date: string, manual: string) {
+  if (manual) {
+    if (await numberTaken(tenantId, manual)) throw new Error(`Invoice number ${manual} is already used`);
+    return manual;
+  }
+  const list = await listSeries(tenantId);
+  const series = list.find((x) => x.id === seriesId) ?? list.find((x) => x.isDefault) ?? list[0];
+  if (series.mode === "date") {
+    const base = `${series.prefix}${ddmmyyyy(date)}`;
+    for (let n = 1; n < 100; n++) {
+      const candidate = n === 1 ? base : `${base}-${n}`;
+      if (!(await numberTaken(tenantId, candidate))) return candidate;
+    }
+    throw new Error("Too many invoices for this date");
+  }
+  for (;;) {
+    const [{ n }] = await db.update(invoiceSeries).set({ nextNumber: sql`${invoiceSeries.nextNumber} + 1` })
+      .where(eq(invoiceSeries.id, series.id)).returning({ n: sql<number>`${invoiceSeries.nextNumber} - 1` });
+    const candidate = `${series.prefix}${n}`;
+    if (!(await numberTaken(tenantId, candidate))) return candidate; // skip numbers already used by hand
+  }
+}
+
+/** Preview shown in the form; does not reserve anything. */
+export async function previewNumber(seriesId: string, date: string) {
+  const { tenantId } = await requireTenant();
+  const list = await listSeries(tenantId);
+  const sr = list.find((x) => x.id === seriesId) ?? list.find((x) => x.isDefault) ?? list[0];
+  if (sr.mode === "date") { try { return `${sr.prefix}${ddmmyyyy(date)}`; } catch { return `${sr.prefix}DDMMYYYY`; } }
+  return `${sr.prefix}${sr.nextNumber}`;
+}
+
+export async function saveSeries(f: FormData) {
+  const { tenantId } = await requireTenant();
+  const prefix = s(f, "prefix");
+  if (!/^[\w#\-\/.]{0,20}$/.test(prefix)) throw new Error("Prefix: up to 20 letters, digits or # - / _ .");
+  const mode = z.enum(["sequence", "date"]).parse(s(f, "mode"));
+  const nextNumber = Math.max(1, Number(s(f, "nextNumber")) || 1);
+  const isDefault = f.get("isDefault") === "on";
+  if (isDefault) await db.update(invoiceSeries).set({ isDefault: false }).where(eq(invoiceSeries.tenantId, tenantId));
+  const id = s(f, "id");
+  if (id) await db.update(invoiceSeries).set({ prefix, mode, nextNumber, ...(isDefault ? { isDefault } : {}) })
+    .where(and(eq(invoiceSeries.id, id), eq(invoiceSeries.tenantId, tenantId)));
+  else await db.insert(invoiceSeries).values({ tenantId, prefix, mode, nextNumber, isDefault });
+  revalidatePath("/settings");
+}
+
+export async function deleteSeries(f: FormData) {
+  const { tenantId } = await requireTenant();
+  const list = await listSeries(tenantId);
+  if (list.length <= 1) throw new Error("Keep at least one numbering series");
+  const id = s(f, "id");
+  await db.delete(invoiceSeries).where(and(eq(invoiceSeries.id, id), eq(invoiceSeries.tenantId, tenantId)));
+  await db.update(clients).set({ defaultSeriesId: null }).where(and(eq(clients.tenantId, tenantId), eq(clients.defaultSeriesId, id)));
+  if (list.find((x) => x.id === id)?.isDefault) {
+    const next = list.find((x) => x.id !== id)!;
+    await db.update(invoiceSeries).set({ isDefault: true }).where(eq(invoiceSeries.id, next.id));
+  }
+  revalidatePath("/settings");
 }
