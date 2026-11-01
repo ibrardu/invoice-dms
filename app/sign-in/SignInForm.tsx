@@ -2,7 +2,7 @@
 import { useActionState, useState } from "react";
 import { signInAction } from "./actions";
 
-export default function SignInForm({ notice }: { notice?: string }) {
+export default function SignInForm({ notice, signup }: { notice?: string; signup: boolean }) {
   const [mode, setMode] = useState<"in" | "up">("in");
   const [error, action, pending] = useActionState(signInAction, null);
   return (
@@ -14,9 +14,9 @@ export default function SignInForm({ notice }: { notice?: string }) {
       <p><label>Password</label><input name="password" type="password" autoComplete={mode === "in" ? "current-password" : "new-password"} required /></p>
       {(error || notice) && <p style={{ color: "var(--danger)" }}>{error || notice}</p>}
       <button disabled={pending} style={{ width: "100%" }}>{pending ? "Please wait..." : mode === "in" ? "Sign in" : "Create account"}</button>
-      <p className="muted" style={{ textAlign: "center" }}>
+      {signup && <p className="muted" style={{ textAlign: "center" }}>
         <a href="#" onClick={(e) => { e.preventDefault(); setMode(mode === "in" ? "up" : "in"); }}>
-          {mode === "in" ? "First time? Create your account" : "Have an account? Sign in"}</a></p>
+          {mode === "in" ? "First time? Create your account" : "Have an account? Sign in"}</a></p>}
     </form>
   );
 }
