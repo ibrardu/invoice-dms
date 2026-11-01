@@ -81,7 +81,7 @@ export async function extractSvr(f: FormData): Promise<
       const blob = await put(`${tenantId}/${crypto.randomUUID()}-${safe}`, file, { access: "private", contentType: file.type || "application/octet-stream" });
       const [doc] = await db.insert(documents).values({ tenantId, uploadedBy: userId, clientId: client?.id ?? null,
         title: `SVR ${v.date ?? ""} ${v.ticket ?? ""}`.replace(/\s+/g, " ").trim(), fileName: file.name,
-        contentType: file.type || "application/octet-stream", sizeBytes: file.size, blobPath: blob.pathname, category: "svr",
+        contentType: file.type || "application/octet-stream", sizeBytes: file.size, blobPath: blob.pathname, category: "svr", visitDate: /^\d{4}-\d{2}-\d{2}$/.test(v.date ?? "") ? v.date : null, visitHours: v.hours ? String(v.hours) : null,
         tags: [v.ticket, v.endCustomer, v.site, v.engineer].filter(Boolean).join(", ") }).returning({ id: documents.id });
       return { ...v, fileName: file.name, docId: doc.id, warnings };
     }));

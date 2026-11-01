@@ -99,8 +99,12 @@ export async function saveInvoice(f: FormData) {
     [{ id }] = await db.insert(invoices).values({ ...base, tenantId, number, createdBy: userId }).returning({ id: invoices.id });
   }
   await db.insert(invoiceItems).values(lines.map(({ tax: _t, ...l }) => ({ ...l, invoiceId: id })));
-  for (const docId of s(f, "svrDocIds").split(",").filter(Boolean))
-    await db.update(documents).set({ invoiceId: id, clientId }).where(and(eq(documents.id, docId), eq(documents.tenantId, tenantId)));
+  const svrVisits = z.array(z.object({ docId: z.string().uuid(), date: z.string().nullable(), hours: z.number() }))
+    .catch([]).parse(JSON.parse(s(f, "svrVisits") || "[]"));
+  for (const v of svrVisits)
+    await db.update(documents).set({ invoiceId: id, clientId,
+      visitDate: v.date && /^\d{4}-\d{2}-\d{2}$/.test(v.date) ? v.date : null, visitHours: v.hours ? String(v.hours) : null })
+      .where(and(eq(documents.id, v.docId), eq(documents.tenantId, tenantId)));
   revalidatePath("/invoices");
   redirect(`/invoices/${id}`);
 }

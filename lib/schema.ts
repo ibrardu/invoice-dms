@@ -101,6 +101,8 @@ export const documents = pgTable("documents", {
   category: text("category").notNull().default("general"),
   tags: text("tags").notNull().default(""),
   clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
+  visitDate: date("visit_date"),
+  visitHours: numeric("visit_hours", { precision: 6, scale: 2 }),
   invoiceId: uuid("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
   uploadedBy: text("uploaded_by").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),

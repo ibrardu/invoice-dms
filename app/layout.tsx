@@ -20,6 +20,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/invoices">Invoices</Link>
                 <Link href="/clients">Clients</Link>
                 <Link href="/documents">Documents</Link>
+                <Link href="/export">Export</Link>
                 <Link href="/settings">Settings</Link>
               </nav>
               <OrganizationSwitcher hidePersonal={false} />

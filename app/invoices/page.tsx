@@ -3,11 +3,13 @@ import { desc, eq } from "drizzle-orm";
 import { db, invoices, clients } from "@/lib/db";
 import { requireTenant } from "@/lib/auth";
 import { fmt } from "@/lib/money";
+import { markOverdue } from "@/lib/overdue";
 
 export const dynamic = "force-dynamic";
 
 export default async function Invoices() {
   const { tenantId } = await requireTenant();
+  await markOverdue(tenantId);
   const list = await db.select({ inv: invoices, client: clients.name }).from(invoices)
     .innerJoin(clients, eq(clients.id, invoices.clientId)).where(eq(invoices.tenantId, tenantId)).orderBy(desc(invoices.createdAt));
   return (

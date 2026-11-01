@@ -1,5 +1,5 @@
 {
-  "id": "561c3f73-cefe-4fd8-80e7-177c32843443",
+  "id": "57eaeaa0-8aa3-4ae9-b28b-c17339956a7a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -345,6 +345,18 @@
         "client_id": {
           "name": "client_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visit_date": {
+          "name": "visit_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visit_hours": {
+          "name": "visit_hours",
+          "type": "numeric(6, 2)",
           "primaryKey": false,
           "notNull": false
         },

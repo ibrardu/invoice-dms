@@ -14,7 +14,6 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial }: 
   const [items, setItems] = useState<Item[]>(initial?.items ?? [blank()]);
   const upd = (i: number, k: keyof Item, v: string) => setItems(items.map((it, j) => j === i ? { ...it, [k]: k === "description" ? v : Number(v) } : it));
   const f = (n: number) => new Intl.NumberFormat("en-IE", { style: "currency", currency }).format(n);
-  const [svrDocs, setSvrDocs] = useState<string[]>([]);
   const [visits, setVisits] = useState<RVisit[]>([]);
   const [svrMsg, setSvrMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,7 +33,6 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial }: 
     setItems([...keep, ...r.lines]);
     setSupply(r.supplyDates || supply);
     setVisits([...visits, ...r.visits.map((v) => ({ ...v, mode: r.mode, rates: r.rates, tax: r.tax }))]);
-    setSvrDocs([...svrDocs, ...r.visits.map((v) => v.docId)]);
     setSvrMsg(`Read ${r.visits.length} SVR(s). Check the lines below; expenses without an amount are set to 0.`);
   }
 
@@ -75,7 +73,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial }: 
           <td>{v.warnings.length ? <span style={{ color: "var(--danger)" }}>{v.warnings.join("; ")}</span> : <span style={{ color: "var(--ok)" }}>OK</span>}</td></tr>)}</tbody></table>}
     </form>}
     <form action={saveInvoice} className="card">
-      <input type="hidden" name="svrDocIds" value={svrDocs.join(",")} />
+      <input type="hidden" name="svrVisits" value={JSON.stringify(visits.map((v) => ({ docId: v.docId, date: v.date, hours: v.hours })))} />
       <input type="hidden" name="id" defaultValue={initial?.id} />
       <input type="hidden" name="items" value={JSON.stringify(items.map(({ visitKey: _k, ...it }) => it))} />
       <div className="grid">

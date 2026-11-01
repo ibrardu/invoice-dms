@@ -50,6 +50,8 @@ CREATE TABLE "documents" (
 	"category" text DEFAULT 'general' NOT NULL,
 	"tags" text DEFAULT '' NOT NULL,
 	"client_id" uuid,
+	"visit_date" date,
+	"visit_hours" numeric(6, 2),
 	"invoice_id" uuid,
 	"uploaded_by" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
