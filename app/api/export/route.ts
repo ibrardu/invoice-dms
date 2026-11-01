@@ -1,5 +1,6 @@
 import { and, asc, eq, gte, lt, ne } from "drizzle-orm";
-import { db, invoices, invoiceItems, clients, payments, documents } from "@/lib/db";
+import { db, invoices, invoiceItems, clients, payments, documents, expenses } from "@/lib/db";
+import { categoryLabel } from "@/lib/expense-categories";
 import { requireTenant } from "@/lib/auth";
 
 type Row = Record<string, string | number | null>;
@@ -63,6 +64,18 @@ export async function GET(req: Request) {
         year ? and(gte(documents.visitDate, `${year}-01-01`), lt(documents.visitDate, `${year + 1}-01-01`)) : undefined,
         clientId ? eq(documents.clientId, clientId) : undefined)).orderBy(asc(documents.visitDate));
     rows = list.map(({ d, c, n }) => ({ visit_date: d.visitDate, hours: d.visitHours ? Number(d.visitHours) : null, client: c, tags: d.tags, file: d.fileName, invoice_number: n ?? "not invoiced" }));
+  } else if (type === "expenses") {
+    const list = await db.select({ e: expenses, c: clients.name, n: invoices.number }).from(expenses)
+      .leftJoin(clients, eq(clients.id, expenses.clientId)).leftJoin(invoices, eq(invoices.id, expenses.invoiceId))
+      .where(and(eq(expenses.tenantId, tenantId),
+        year ? and(gte(expenses.spentOn, `${year}-01-01`), lt(expenses.spentOn, `${year + 1}-01-01`)) : undefined,
+        clientId ? eq(expenses.clientId, clientId) : undefined)).orderBy(asc(expenses.spentOn));
+    rows = list.map(({ e, c, n }) => {
+      const net = Math.round(e.amountCents / (1 + Number(e.vatRate) / 100));
+      return { date: e.spentOn, description: e.description, category: categoryLabel(e.category), vendor: e.vendor,
+        gross: eur(e.amountCents), vat_rate: Number(e.vatRate), vat: eur(e.amountCents - net), net: eur(net), currency: e.currency,
+        paid_with: e.paymentMethod, client: c, billable: e.billable ? "yes" : "no", invoice_number: n ?? "", receipt: e.receiptDocId ? "yes" : "no" };
+    });
   } else return new Response("Unknown export type", { status: 400 });
 
   const name = `${type}${year ? `-${year}` : ""}.csv`;

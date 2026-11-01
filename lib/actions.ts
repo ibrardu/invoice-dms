@@ -1,10 +1,10 @@
 "use server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { put, del } from "@vercel/blob";
 import { z } from "zod";
-import { db, clients, companies, invoices, invoiceItems, payments, documents, invoiceSeries } from "./db";
+import { db, clients, companies, invoices, invoiceItems, payments, documents, invoiceSeries, expenses } from "./db";
 import { requireTenant } from "./auth";
 import { toCents, today, addDays } from "./money";
 
@@ -103,6 +103,10 @@ export async function saveInvoice(f: FormData) {
     await db.update(invoices).set({ number: want }).where(eq(invoices.id, id));
   }
   await db.insert(invoiceItems).values(lines.map(({ tax: _t, ...l }) => ({ ...l, invoiceId: id })));
+  const expenseIds = s(f, "expenseIds").split(",").filter((x) => /^[0-9a-f-]{36}$/.test(x));
+  for (const eid of expenseIds)
+    await db.update(expenses).set({ invoiceId: id })
+      .where(and(eq(expenses.id, eid), eq(expenses.tenantId, tenantId), eq(expenses.clientId, clientId), isNull(expenses.invoiceId)));
   const svrVisits = z.array(z.object({ docId: z.string().uuid(), date: z.string().nullable(), hours: z.number() }))
     .catch([]).parse(JSON.parse(s(f, "svrVisits") || "[]"));
   for (const v of svrVisits)

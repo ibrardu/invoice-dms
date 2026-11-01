@@ -9,10 +9,11 @@ type Item = { description: string; quantity: number; unitPrice: number; taxRate:
 type RVisit = Visit & { mode: Mode; rates: Rates; tax: number };
 type Series = { id: string; prefix: string; mode: string; isDefault: boolean };
 type Preload = { visits: Visit[]; lines: Item[]; supplyDates: string; mode: Mode; rates: Rates; tax: number } | null;
-type Props = { preload?: Preload; presetClient?: string; series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
+type OpenExpense = { id: string; clientId: string | null; spentOn: string; description: string; amountCents: number };
+type Props = { openExpenses?: OpenExpense[]; preload?: Preload; presetClient?: string; series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
   initial?: { id: string; number: string; clientId: string; issueDate: string; dueDate: string; notes: string; supplyDates: string; items: Item[] } };
 
-export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient }: Props) {
+export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient, openExpenses = [] }: Props) {
   const defSeries = series.find((x) => x.isDefault)?.id ?? series[0]?.id ?? "";
   const blank = (): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: defaultTax });
   const [items, setItems] = useState<Item[]>(initial?.items ?? (preload?.lines.length ? preload.lines : [blank()]));
@@ -68,6 +69,22 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
     setVisits(next);
   }
 
+  // Billable expenses of the chosen client: ticking one adds it as a line, unticking removes it.
+  const [picked, setPicked] = useState<string[]>([]);
+  const clientExpenses = openExpenses.filter((e) => e.clientId === clientId);
+  function toggleExpense(e: OpenExpense) {
+    const key = `exp:${e.id}`;
+    if (picked.includes(e.id)) {
+      setPicked(picked.filter((x) => x !== e.id));
+      setItems(items.filter((it) => it.visitKey !== key));
+    } else {
+      setPicked([...picked, e.id]);
+      const d = `${e.spentOn.slice(8, 10)}.${e.spentOn.slice(5, 7)}.${e.spentOn.slice(0, 4)}`;
+      const keep = items.filter((it) => it.description.trim());
+      setItems([...keep, { description: `${e.description} ${d}`, quantity: 1, unitPrice: e.amountCents / 100, taxRate: 0, visitKey: key }]);
+    }
+  }
+
   const sub = items.reduce((a, it) => a + it.quantity * it.unitPrice, 0);
   const tax = items.reduce((a, it) => a + it.quantity * it.unitPrice * it.taxRate / 100, 0);
 
@@ -113,6 +130,14 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
           <input name="manualNumber" value={manual} onChange={(e) => setManual(e.target.value)} placeholder={initial ? initial.number : preview} /></div>
         <div><label>Invoice number will be</label><div style={{ padding: "8px 0", fontWeight: 600 }}>{manual || (initial ? initial.number : preview || "...")}</div></div>
       </div>
+      {clientExpenses.length > 0 && <div style={{ marginTop: 16 }}>
+        <label>Billable expenses for this client</label>
+        {clientExpenses.map((e) => <label key={e.id} style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--text)", margin: "4px 0" }}>
+          <input type="checkbox" checked={picked.includes(e.id)} onChange={() => toggleExpense(e)} style={{ width: "auto" }} />
+          <span className="num">{e.spentOn.slice(8, 10)}.{e.spentOn.slice(5, 7)}.{e.spentOn.slice(0, 4)}</span> {e.description}
+          <span className="num muted">{f(e.amountCents / 100)}</span></label>)}
+      </div>}
+      <input type="hidden" name="expenseIds" value={picked.filter((id) => clientExpenses.some((e) => e.id === id)).join(",")} />
       <table style={{ marginTop: 16 }}>
         <thead><tr><th style={{ width: "45%" }}>Description</th><th>Qty</th><th>Unit price</th><th>Tax %</th><th className="r">Amount</th><th></th></tr></thead>
         <tbody>{items.map((it, i) => <tr key={i}>
