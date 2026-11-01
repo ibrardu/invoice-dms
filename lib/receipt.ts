@@ -43,10 +43,16 @@ Rules: dates like 19.06.2026 are day.month.year. Use the grand total (Summe, Tot
 German receipts: "MwSt" or "USt" A=19%, B=7% unless stated otherwise. Never invent values; use null when unsure.`;
 
 function clean(data: ReceiptData) {
-  if (data.date && !/^\d{4}-\d{2}-\d{2}$/.test(data.date)) data.date = null;
-  if (data.currency) data.currency = data.currency.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) || null;
   if (data.total != null && (data.total <= 0 || data.total > 100000)) data.total = null;
+  // Observability without sensitive values: log which fields came back, never their contents.
+  console.info("receipt read", { fields: Object.entries(data).filter(([, v]) => v != null && v !== "").map(([k]) => k) });
   return data;
+}
+
+/** Drift check: a result with neither a total nor a date is not a usable receipt. */
+function usable(data: ReceiptData): { ok: true; data: ReceiptData } | { ok: false; error: string } {
+  if (data.total == null && !data.date) return { ok: false, error: "No total or date found. Is this a receipt? Try a sharper photo or enter it by hand." };
+  return { ok: true, data };
 }
 
 /** Reads a receipt photo (vision model) or PDF (text) and returns the fields for the expense form. */
@@ -58,7 +64,7 @@ export async function readReceipt(f: FormData): Promise<{ ok: true; data: Receip
     const file = f.get("receipt");
     if (!(file instanceof File) || !file.size) return { ok: false, error: "Choose a receipt photo or PDF first." };
     if (file.size > 8 * 1024 * 1024) return { ok: false, error: "Receipt is larger than 8 MB." };
-    if (llamaCloudEnabled()) return { ok: true, data: clean(receiptSchema.parse(await llamaExtract(file, RECEIPT_JSON_SCHEMA, PROMPT))) };
+    if (llamaCloudEnabled()) return usable(clean(receiptSchema.parse(await llamaExtract(file, RECEIPT_JSON_SCHEMA, PROMPT))));
     if (!LLAMA_API_URL || !visionModel) return { ok: false, error: "Receipt reading is not set up. Add LLAMA_CLOUD_API_KEY (LlamaParse) in Vercel." };
     const buf = new Uint8Array(await file.arrayBuffer());
 
@@ -87,7 +93,7 @@ export async function readReceipt(f: FormData): Promise<{ ok: true; data: Receip
     }
     const raw = String((await r.json()).choices?.[0]?.message?.content ?? "");
     const data = receiptSchema.parse(JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)));
-    return { ok: true, data: clean(data) };
+    return usable(clean(data));
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not read the receipt" };
   }

@@ -5,56 +5,79 @@ import { put, del } from "@vercel/blob";
 import { z } from "zod";
 import { db, expenses, clients, documents } from "./db";
 import { requireTenant } from "./auth";
-import { toCents, today } from "./money";
+import { today } from "./money";
+import { transforms, validateExpense } from "./field-maps";
 import { EXPENSE_CATEGORIES } from "./expense-categories";
 
 const CAT_IDS = EXPENSE_CATEGORIES.map(([k]) => k) as [string, ...string[]];
 const s = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
-export async function saveExpense(f: FormData) {
+export type ExpenseFormState = { ok: boolean; errors: Record<string, string>; message?: string; duplicateOf?: string } | null;
+
+/** Validates, de-duplicates and saves. Returns field-level errors instead of throwing. */
+export async function saveExpense(_: ExpenseFormState, f: FormData): Promise<ExpenseFormState> {
   const { tenantId, userId } = await requireTenant();
-  const amountCents = toCents(s(f, "amount"));
-  if (amountCents <= 0) throw new Error("Enter the amount from the receipt");
-  const description = s(f, "description");
-  if (!description) throw new Error("Describe the expense, e.g. Coffee on site");
-  const spentOn = /^\d{4}-\d{2}-\d{2}$/.test(s(f, "spentOn")) ? s(f, "spentOn") : today();
-  const clientIdRaw = s(f, "clientId");
-  let clientId: string | null = null;
-  if (clientIdRaw) {
-    const [c] = await db.select({ id: clients.id }).from(clients).where(and(eq(clients.id, clientIdRaw), eq(clients.tenantId, tenantId)));
-    clientId = c?.id ?? null;
+  const raw: Record<string, string> = {};
+  for (const k of ["spentOn", "amount", "description", "vatRate", "currency", "billable", "clientId", "category", "vendor", "paymentMethod", "notes"]) raw[k] = s(f, k);
+  const errors = validateExpense(raw, today());
+  if (Object.keys(errors).length) return { ok: false, errors, message: "Please fix the marked fields" };
+
+  const id = s(f, "id");
+  const submissionKey = /^[\w-]{8,64}$/.test(s(f, "submissionKey")) ? s(f, "submissionKey") : null;
+  // Idempotency: the same rendered form submitted twice (double click, retry) saves once.
+  if (!id && submissionKey) {
+    const [done] = await db.select({ id: expenses.id }).from(expenses).where(and(eq(expenses.tenantId, tenantId), eq(expenses.submissionKey, submissionKey)));
+    if (done) return { ok: true, errors: {}, message: "Already saved" };
   }
+
+  const spentOn = transforms.date(raw.spentOn)!;
+  const amountCents = Math.round(Number(transforms.amount(raw.amount)) * 100);
+  let clientId: string | null = null;
+  if (raw.clientId) {
+    const [c] = await db.select({ id: clients.id }).from(clients).where(and(eq(clients.id, raw.clientId), eq(clients.tenantId, tenantId)));
+    if (!c) return { ok: false, errors: { clientId: "Client not found" } };
+    clientId = c.id;
+  }
+
+  // Likely duplicate: same day and amount already recorded. Ask once; a second submit confirms.
+  if (!id && f.get("confirmDuplicate") !== "on") {
+    const [dup] = await db.select({ id: expenses.id, description: expenses.description }).from(expenses)
+      .where(and(eq(expenses.tenantId, tenantId), eq(expenses.spentOn, spentOn), eq(expenses.amountCents, amountCents)));
+    if (dup) return { ok: false, errors: {}, duplicateOf: dup.description,
+      message: `You already recorded ${(amountCents / 100).toFixed(2)} on this date ("${dup.description}"). Tick "Save anyway" if this is a different expense.` };
+  }
+
   const data = {
-    spentOn, description, amountCents, clientId,
-    category: z.enum(CAT_IDS).catch("other").parse(s(f, "category")),
-    vendor: s(f, "vendor"), currency: (s(f, "currency") || "EUR").toUpperCase().slice(0, 3),
-    vatRate: String(Math.min(100, Math.max(0, Number(s(f, "vatRate")) || 0))),
-    paymentMethod: s(f, "paymentMethod"), notes: s(f, "notes"),
-    billable: f.get("billable") === "on" && !!clientId,
+    spentOn, description: transforms.text(raw.description)!, amountCents, clientId,
+    category: z.enum(CAT_IDS).catch("other").parse(raw.category),
+    vendor: transforms.text(raw.vendor) ?? "", currency: transforms.currency(raw.currency) ?? "EUR",
+    vatRate: transforms.vat(raw.vatRate) ?? "0",
+    paymentMethod: transforms.text(raw.paymentMethod) ?? "", notes: raw.notes,
+    billable: raw.billable === "on" && !!clientId,
   };
 
-  // Optional receipt: stored privately in Documents as category "receipt".
   const file = f.get("receipt");
   let receiptDocId: string | undefined;
   if (file instanceof File && file.size > 0) {
-    if (file.size > 10 * 1024 * 1024) throw new Error("Receipt is larger than 10 MB");
+    if (file.size > 10 * 1024 * 1024) return { ok: false, errors: { receipt: "Receipt is larger than 10 MB" } };
     const safe = file.name.replace(/[^\w.\-]+/g, "_").slice(-120);
     const blob = await put(`${tenantId}/${crypto.randomUUID()}-${safe}`, file, { access: "private", contentType: file.type || "application/octet-stream" });
-    const [doc] = await db.insert(documents).values({ tenantId, uploadedBy: userId, title: `Receipt ${spentOn} ${description}`.slice(0, 200),
+    const [doc] = await db.insert(documents).values({ tenantId, uploadedBy: userId, title: `Receipt ${spentOn} ${data.description}`.slice(0, 200),
       fileName: file.name, contentType: file.type || "application/octet-stream", sizeBytes: file.size, blobPath: blob.pathname,
       category: "receipt", tags: [data.vendor, data.category].filter(Boolean).join(", "), clientId }).returning({ id: documents.id });
     receiptDocId = doc.id;
   }
 
-  const id = s(f, "id");
   if (id) {
     await db.update(expenses).set({ ...data, ...(receiptDocId ? { receiptDocId } : {}) })
       .where(and(eq(expenses.id, id), eq(expenses.tenantId, tenantId)));
   } else {
-    await db.insert(expenses).values({ ...data, tenantId, createdBy: userId, receiptDocId: receiptDocId ?? null });
+    await db.insert(expenses).values({ ...data, tenantId, createdBy: userId, receiptDocId: receiptDocId ?? null, submissionKey })
+      .onConflictDoNothing();
   }
   revalidatePath("/expenses");
   revalidatePath("/");
+  return { ok: true, errors: {}, message: id ? "Expense updated" : "Expense added" };
 }
 
 export async function deleteExpense(f: FormData) {

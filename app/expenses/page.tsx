@@ -2,11 +2,11 @@ import Link from "next/link";
 import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db, expenses, clients, invoices } from "@/lib/db";
 import { requireTenant } from "@/lib/auth";
-import { saveExpense, deleteExpense } from "@/lib/expenses";
+import { deleteExpense } from "@/lib/expenses";
 import { EXPENSE_CATEGORIES, categoryLabel } from "@/lib/expense-categories";
 import { getCompany } from "@/lib/actions";
 import { fmt, today } from "@/lib/money";
-import ReceiptPicker from "./ReceiptPicker";
+import ExpenseForm from "./ExpenseForm";
 
 export const dynamic = "force-dynamic";
 const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
@@ -69,28 +69,9 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
       </section>
 
       <div className="cols2">
-        <form action={saveExpense} className="card" key={edit?.id ?? "new"} encType="multipart/form-data">
-          <div className="head"><h2>{edit ? "Edit expense" : "Add expense"}</h2>{edit && <Link href="/expenses" className="muted">Cancel</Link>}</div>
-          <input type="hidden" name="id" defaultValue={edit?.id} />
-          <div className="grid">
-            <div><label>Date</label><input type="date" name="spentOn" defaultValue={edit?.spentOn ?? now} required /></div>
-            <div><label>Amount (incl. VAT)</label><input name="amount" type="number" step="0.01" min="0.01" defaultValue={edit ? (edit.amountCents / 100).toFixed(2) : ""} required /></div>
-          </div>
-          <div style={{ marginTop: 12 }}><label>What was it for</label><input name="description" defaultValue={edit?.description} placeholder="Coffee on site, taxi to warehouse, LC/LC fibre cables" required /></div>
-          <div className="grid" style={{ marginTop: 12 }}>
-            <div><label>Category</label><select name="category" defaultValue={edit?.category ?? "food"}>{EXPENSE_CATEGORIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
-            <div><label>Shop or vendor</label><input name="vendor" defaultValue={edit?.vendor} /></div>
-            <div><label>VAT %</label><input name="vatRate" type="number" step="0.01" min="0" max="100" defaultValue={edit?.vatRate ?? "19"} /></div>
-            <div><label>Currency</label><input name="currency" defaultValue={edit?.currency ?? cur} maxLength={3} /></div>
-            <div><label>Paid with</label><input name="paymentMethod" defaultValue={edit?.paymentMethod} placeholder="Card, cash, Wise" /></div>
-            <div><label>Client / job</label><select name="clientId" defaultValue={edit?.clientId ?? ""}><option value="">None</option>{clientList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-          </div>
-          <label style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", color: "var(--text)" }}>
-            <input type="checkbox" name="billable" defaultChecked={edit?.billable} style={{ width: "auto" }} /> Charge to the client on the next invoice</label>
-          <ReceiptPicker />
-          <div style={{ marginTop: 12 }}><label>Notes</label><textarea name="notes" rows={2} defaultValue={edit?.notes} /></div>
-          <p style={{ marginBottom: 0 }}><button>{edit ? "Save expense" : "Add expense"}</button></p>
-        </form>
+        <ExpenseForm key={edit?.id ?? "new"} today={now} currency={cur} clients={clientList}
+          edit={edit && { id: edit.id, spentOn: edit.spentOn, amountCents: edit.amountCents, description: edit.description, category: edit.category,
+            vendor: edit.vendor, vatRate: edit.vatRate, currency: edit.currency, paymentMethod: edit.paymentMethod, clientId: edit.clientId, billable: edit.billable, notes: edit.notes }} />
 
         <section className="card">
           <h2>By category</h2>

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useEffect } from "react";
+import { useFormStatus } from "react-dom";
 import { saveInvoice, previewNumber } from "@/lib/actions";
 import { extractSvr, type Visit } from "@/lib/svr";
 import { priceVisit, hoursBetween, type Mode, type Rates } from "@/lib/pricing";
@@ -16,6 +17,7 @@ type Props = { openExpenses?: OpenExpense[]; preload?: Preload; presetClient?: s
 export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient, openExpenses = [] }: Props) {
   const defSeries = series.find((x) => x.isDefault)?.id ?? series[0]?.id ?? "";
   const blank = (): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: defaultTax });
+  const [submissionKey] = useState(() => crypto.randomUUID());
   const [items, setItems] = useState<Item[]>(initial?.items ?? (preload?.lines.length ? preload.lines : [blank()]));
   const upd = (i: number, k: keyof Item, v: string) => setItems(items.map((it, j) => j === i ? { ...it, [k]: k === "description" ? v : Number(v) } : it));
   const f = (n: number) => new Intl.NumberFormat("en-IE", { style: "currency", currency }).format(n);
@@ -109,6 +111,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
           <td>{v.warnings.length ? <span style={{ color: "var(--danger)" }}>{v.warnings.join("; ")}</span> : <span style={{ color: "var(--ok)" }}>OK</span>}</td></tr>)}</tbody></table>}
     </form>}
     <form action={saveInvoice} className="card">
+      <input type="hidden" name="submissionKey" value={submissionKey} />
       <input type="hidden" name="svrVisits" value={JSON.stringify(visits.map((v) => ({ docId: v.docId, date: v.date, hours: v.hours })))} />
       <input type="hidden" name="id" defaultValue={initial?.id} />
       <input type="hidden" name="items" value={JSON.stringify(items.map(({ visitKey: _k, ...it }) => it))} />
@@ -155,8 +158,14 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
         <div className="r"><p>Subtotal: {f(sub)}</p><p>Tax: {f(tax)}</p><p><b>Total: {f(sub + tax)}</b></p></div>
       </div>
       {items.some((it) => it.quantity <= 0) && <p style={{ color: "var(--danger)" }}>Some lines have quantity 0. Enter the missing hours above or in the line.</p>}
-      <button disabled={items.some((it) => it.quantity <= 0)}>{initial ? "Save invoice" : "Create invoice"}</button>
+      <SubmitButton disabled={items.some((it) => it.quantity <= 0)} label={initial ? "Save invoice" : "Create invoice"} />
     </form>
     </>
   );
+}
+
+// Disabled while the invoice is being saved, so a double click cannot submit twice.
+function SubmitButton({ disabled, label }: { disabled: boolean; label: string }) {
+  const { pending } = useFormStatus();
+  return <button disabled={disabled || pending}>{pending ? "Saving..." : label}</button>;
 }
