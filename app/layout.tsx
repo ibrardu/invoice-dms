@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider, UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
+import { clerkPublishableKey } from "@/lib/clerk-keys";
 import "./globals.css";
 
 export const metadata: Metadata = { title: "Invoice DMS", robots: { index: false, follow: false } };
@@ -9,7 +10,7 @@ export const metadata: Metadata = { title: "Invoice DMS", robots: { index: false
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
   return (
-    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
+    <ClerkProvider publishableKey={clerkPublishableKey()} dynamic signInUrl="/sign-in" signUpUrl="/sign-up">
       <html lang="en">
         <body>
           {userId && (
