@@ -20,7 +20,20 @@
 .inv-foot{margin-top:auto;padding-top:0;display:grid;grid-template-columns:33fr 33fr 34fr;font-size:9pt;line-height:1.35}
 .inv-foot::before{content:"";grid-column:1/-1;height:.8pt;background:#F5F5F5;margin-bottom:5mm}
 .inv-foot h4{margin:0 0 1mm;font-size:9pt;color:#808080;text-transform:uppercase;font-weight:700}
-@media print{@page{size:A4;margin:0}body{background:#fff}.no-print,.top{display:none!important}main{padding:0;max-width:none}.inv{box-shadow:none;margin:0}}
-.inv-qr{width:34mm;font-size:7.5pt;line-height:1.3;text-align:center;color:#333}
-.inv-qr .qr svg{width:30mm;height:30mm;display:block;margin:0 auto 1.5mm}
-.inv-qr a{color:#000;text-decoration:underline}
+.inv-layout{width:100%;border-collapse:collapse}.inv-layout>*>tr>td{padding:0;vertical-align:top}
+.inv-layout .sp-top,.inv-layout .sp-bot{display:none}
+.inv-items th{text-align:left}
+/* Print: footer pinned to the bottom of every page; layout-table spacers keep content clear of it. */
+@media print{
+  @page{size:A4;margin:0 20mm}
+  html,body{background:#fff;margin:0}
+  .no-print,.top{display:none!important}
+  main{padding:0;max-width:none;margin:0}
+  .inv-wrap{padding:0}
+  .inv{box-shadow:none;margin:0;padding:0;width:auto;min-height:0;display:block}
+  .inv-layout .sp-top{display:block;height:20mm}
+  .inv-layout .sp-bot{display:block;height:44mm}
+  .inv-foot{position:fixed;left:0;right:0;bottom:12mm;margin:0}
+  .inv-items tfoot{display:table-row-group}
+  .inv-items tr,.inv-pay,.inv-note,.inv-qr{break-inside:avoid}
+}
