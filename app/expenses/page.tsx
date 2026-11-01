@@ -6,6 +6,7 @@ import { saveExpense, deleteExpense } from "@/lib/expenses";
 import { EXPENSE_CATEGORIES, categoryLabel } from "@/lib/expense-categories";
 import { getCompany } from "@/lib/actions";
 import { fmt, today } from "@/lib/money";
+import ReceiptPicker from "./ReceiptPicker";
 
 export const dynamic = "force-dynamic";
 const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
@@ -86,7 +87,7 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
           </div>
           <label style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", color: "var(--text)" }}>
             <input type="checkbox" name="billable" defaultChecked={edit?.billable} style={{ width: "auto" }} /> Charge to the client on the next invoice</label>
-          <div style={{ marginTop: 12 }}><label>Receipt (photo or PDF, optional)</label><input type="file" name="receipt" accept="image/*,application/pdf" style={{ height: "auto", padding: 8 }} /></div>
+          <ReceiptPicker />
           <div style={{ marginTop: 12 }}><label>Notes</label><textarea name="notes" rows={2} defaultValue={edit?.notes} /></div>
           <p style={{ marginBottom: 0 }}><button>{edit ? "Save expense" : "Add expense"}</button></p>
         </form>

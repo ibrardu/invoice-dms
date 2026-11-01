@@ -6,6 +6,7 @@ import { extractText, getDocumentProxy } from "unpdf";
 import { db, documents, clients } from "./db";
 import { requireTenant } from "./auth";
 import { getCompany } from "./actions";
+import { llamaCloudEnabled, llamaExtract } from "./llamacloud";
 import { priceVisit, hoursBetween, dmy, type Mode, type Rates, type Line } from "./pricing";
 
 const n = z.coerce.number().catch(0);
@@ -29,6 +30,26 @@ Return ONLY a JSON object:
 Rules: dates like 19.06.2026 are day.month.year. "31st October 2026" -> 2026-10-31.
 start = time on site / time onsite / start time. end = time left site / time off site / end time.
 hours = end minus start in decimal hours, or 0 if either is missing. Never invent values.`;
+
+// JSON Schema for LlamaExtract (same fields as visitSchema).
+const SVR_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    date: { type: "string", description: "Date of the site visit as YYYY-MM-DD. 19.06.2026 is day.month.year; 31st October 2026 is 2026-10-31." },
+    start: { type: "string", description: "Time on site / time onsite / start time, HH:MM" },
+    end: { type: "string", description: "Time left site / time off site / end time, HH:MM" },
+    hours: { type: "number", description: "End minus start in decimal hours; 0 if a time is missing" },
+    ticket: { type: "string", description: "All ticket, change or reference numbers, comma separated" },
+    site: { type: "string", description: "Site name or address" },
+    endCustomer: { type: "string", description: "End customer or account name" },
+    engineer: { type: "string", description: "Engineer name" },
+    summary: { type: "string", description: "One short sentence of the work done" },
+    expenses: { type: "array", description: "Costs the engineer paid for the customer (taxi, parking, buying cables)", items: { type: "object",
+      properties: { description: { type: "string" }, amount: { type: "number", description: "Amount if written" } }, required: ["description"] } },
+    materials: { type: "array", description: "Parts supplied by the engineer, not replaced customer hardware", items: { type: "object",
+      properties: { description: { type: "string" }, quantity: { type: "number" }, unitPrice: { type: "number" } }, required: ["description"] } },
+  },
+};
 
 async function fileToText(file: File) {
   const buf = new Uint8Array(await file.arrayBuffer());
@@ -59,7 +80,8 @@ export async function extractSvr(f: FormData): Promise<
   { ok: true; visits: Visit[]; lines: Line[]; supplyDates: string; mode: Mode; rates: Rates; tax: number } | { ok: false; error: string }> {
   try {
     const { tenantId, userId } = await requireTenant();
-    if (!process.env.LLAMA_API_URL || !process.env.LLAMA_MODEL) return { ok: false, error: "Llama API is not configured (LLAMA_API_URL, LLAMA_MODEL)." };
+    const cloud = llamaCloudEnabled();
+    if (!cloud && (!process.env.LLAMA_API_URL || !process.env.LLAMA_MODEL)) return { ok: false, error: "SVR reading is not set up. Add LLAMA_CLOUD_API_KEY (LlamaParse) in Vercel." };
     const files = f.getAll("svr").filter((x): x is File => x instanceof File && x.size > 0);
     if (!files.length) return { ok: false, error: "Choose one or more SVR files." };
     if (files.length > 15) return { ok: false, error: "Up to 15 SVRs at a time." };
@@ -70,9 +92,14 @@ export async function extractSvr(f: FormData): Promise<
 
     const visits: Visit[] = await Promise.all(files.map(async (file) => {
       if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} is larger than 10 MB`);
-      const text = (await fileToText(file)).slice(0, 30000);
-      if (text.trim().length < 20) throw new Error(`${file.name}: no readable text (scanned PDF?)`);
-      const v = await llama(text);
+      let v: z.infer<typeof visitSchema>;
+      if (cloud) {
+        v = visitSchema.parse(await llamaExtract(file, SVR_JSON_SCHEMA, PROMPT)); // reads scanned PDFs and photos too
+      } else {
+        const text = (await fileToText(file)).slice(0, 30000);
+        if (text.trim().length < 20) throw new Error(`${file.name}: no readable text (scanned PDF?)`);
+        v = await llama(text);
+      }
       // Recompute hours from times; don't trust model arithmetic.
       const h = hoursBetween(v.start, v.end);
       v.hours = h || (v.start && v.end ? v.hours : 0);
