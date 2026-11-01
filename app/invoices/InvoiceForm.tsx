@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { saveInvoice, previewNumber } from "@/lib/actions";
 import { extractSvr, type Visit } from "@/lib/svr";
 import { priceVisit, hoursBetween, type Mode, type Rates } from "@/lib/pricing";
@@ -18,6 +19,8 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
   const defSeries = series.find((x) => x.isDefault)?.id ?? series[0]?.id ?? "";
   const blank = (): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: defaultTax });
   const [submissionKey] = useState(() => crypto.randomUUID());
+  const [linesRef] = useAutoAnimate<HTMLTableSectionElement>({ duration: 220 });
+  const [visitsRef] = useAutoAnimate<HTMLTableSectionElement>({ duration: 220 });
   const [items, setItems] = useState<Item[]>(initial?.items ?? (preload?.lines.length ? preload.lines : [blank()]));
   const upd = (i: number, k: keyof Item, v: string) => setItems(items.map((it, j) => j === i ? { ...it, [k]: k === "description" ? v : Number(v) } : it));
   const f = (n: number) => new Intl.NumberFormat("en-IE", { style: "currency", currency }).format(n);
@@ -102,7 +105,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
         <button disabled={busy}>{busy ? "Reading..." : "Extract"}</button></div>
       {svrMsg && <p>{svrMsg}</p>}
       {visits.length > 0 && <table><thead><tr><th>Date</th><th>Start</th><th>End</th><th>Hours</th><th>Ticket</th><th>Site / customer</th><th>Check</th></tr></thead>
-        <tbody>{visits.map((v) => <tr key={v.docId}>
+        <tbody ref={visitsRef}>{visits.map((v) => <tr key={v.docId}>
           <td><input type="date" value={v.date ?? ""} onChange={(e) => editVisit(v.docId, { date: e.target.value || null })} /></td>
           <td><input type="time" value={v.start ?? ""} onChange={(e) => editVisit(v.docId, { start: e.target.value || null })} style={{ width: 100 }} /></td>
           <td><input type="time" value={v.end ?? ""} onChange={(e) => editVisit(v.docId, { end: e.target.value || null })} style={{ width: 100 }} /></td>
@@ -143,7 +146,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
       <input type="hidden" name="expenseIds" value={picked.filter((id) => clientExpenses.some((e) => e.id === id)).join(",")} />
       <table style={{ marginTop: 16 }}>
         <thead><tr><th style={{ width: "45%" }}>Description</th><th>Qty</th><th>Unit price</th><th>Tax %</th><th className="r">Amount</th><th></th></tr></thead>
-        <tbody>{items.map((it, i) => <tr key={i}>
+        <tbody ref={linesRef}>{items.map((it, i) => <tr key={it.visitKey ?? `line-${i}`}>
           <td><input value={it.description} onChange={(e) => upd(i, "description", e.target.value)} required /></td>
           <td><input type="number" step="0.01" min="0.01" value={it.quantity} onChange={(e) => upd(i, "quantity", e.target.value)} /></td>
           <td><input type="number" step="0.01" value={it.unitPrice} onChange={(e) => upd(i, "unitPrice", e.target.value)} /></td>
