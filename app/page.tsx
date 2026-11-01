@@ -6,6 +6,7 @@ import { getCompany } from "@/lib/actions";
 import { markOverdue } from "@/lib/overdue";
 import { fmt, today } from "@/lib/money";
 import LineChart from "./LineChart";
+import Animate from "./Animate";
 
 export const dynamic = "force-dynamic";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -113,7 +114,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const period = year === thisYear ? `${new Date(now).toLocaleDateString("en-GB", { month: "long" })} ${year}` : String(year);
 
   return (
-    <>
+    <div className="stagger">
       <div className="ov-title">
         <div>
           <h1>{period}</h1>
@@ -159,13 +160,13 @@ export default async function Overview({ searchParams }: { searchParams: Promise
       <div className="cols2">
         <section className="card">
           <div className="head"><h2>Waiting for payment</h2><Link href="/invoices" className="muted">All invoices</Link></div>
-          {open.length ? <table><tbody>{open.slice(0, 6).map((r) => {
+          {open.length ? <table><Animate as="tbody">{open.slice(0, 6).map((r) => {
             const d = days(now, r.due);
             return <tr key={r.id}>
               <td><Link href={`/invoices/${r.id}`}>{r.number}</Link><div className="muted">{r.client}</div></td>
               <td className={d > 0 ? "late" : "muted"}>{d > 0 ? `${d} days late` : d === 0 ? "Due today" : `Due ${dmy(r.due)}`}</td>
               <td className="r money">{m(balance(r))}</td></tr>;
-          })}</tbody></table> : <p className="muted">Every invoice is paid</p>}
+          })}</Animate></table> : <p className="muted">Every invoice is paid</p>}
           {open.length > 6 && <p className="muted">{open.length - 6} more in Invoices</p>}
         </section>
 
@@ -190,6 +191,6 @@ export default async function Overview({ searchParams }: { searchParams: Promise
             <td className={`r ${c.open ? "" : "muted"}`}>{m(c.open)}</td></tr>)}</tbody></table>
           : <p className="muted">No invoices in {year}</p>}
       </section>
-    </>
+    </div>
   );
 }

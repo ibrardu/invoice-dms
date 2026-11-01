@@ -7,6 +7,7 @@ import { EXPENSE_CATEGORIES, categoryLabel } from "@/lib/expense-categories";
 import { getCompany } from "@/lib/actions";
 import { fmt, today } from "@/lib/money";
 import ExpenseForm from "./ExpenseForm";
+import Animate from "../Animate";
 
 export const dynamic = "force-dynamic";
 const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
@@ -46,7 +47,7 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
   const period = month ? new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }) : String(year);
 
   return (
-    <>
+    <div className="stagger">
       <div className="ov-title">
         <div><h1>Expenses, {period}</h1>
           <p className="sub">{unbilled.n ? `${m(unbilled.v)} in ${unbilled.n} billable expense${unbilled.n > 1 ? "s" : ""} not invoiced yet` : "Every billable expense is invoiced"}</p></div>
@@ -86,7 +87,7 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
         <h2>{rows.length ? `${rows.length} expense${rows.length === 1 ? "" : "s"}` : "No expenses yet"}</h2>
         {rows.length > 0 && <table>
           <thead><tr><th>Date</th><th>What</th><th>Category</th><th>Client</th><th>Billing</th><th className="r">Amount</th><th></th></tr></thead>
-          <tbody>{rows.map(({ e, client, invoice }) => <tr key={e.id}>
+          <Animate as="tbody">{rows.map(({ e, client, invoice }) => <tr key={e.id}>
             <td className="num">{dmy(e.spentOn)}</td>
             <td>{e.description}{e.vendor && <div className="muted">{e.vendor}</div>}</td>
             <td className="muted">{categoryLabel(e.category)}</td>
@@ -98,9 +99,9 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
               <Link href={`/expenses?edit=${e.id}&year=${year}`} className="muted">Edit</Link>
               <form action={deleteExpense}><input type="hidden" name="id" value={e.id} /><button className="danger small">Delete</button></form>
             </div></td>
-          </tr>)}</tbody>
+          </tr>)}</Animate>
         </table>}
       </section>
-    </>
+    </div>
   );
 }
