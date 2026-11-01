@@ -23,7 +23,10 @@ export async function saveSettings(f: FormData) {
   await getCompany(tenantId);
   await db.update(companies).set({
     name: s(f, "name"), address: s(f, "address"), email: s(f, "email"), phone: s(f, "phone"),
-    taxId: s(f, "taxId"), bankDetails: s(f, "bankDetails"), logoUrl: s(f, "logoUrl"),
+    taxId: s(f, "taxId"), bankDetails: s(f, "bankDetails"),
+    accountHolder: s(f, "accountHolder"), iban: s(f, "iban").replace(/\s+/g, "").toUpperCase(),
+    bic: s(f, "bic").replace(/\s+/g, "").toUpperCase(), paymentLink: /^https:\/\//.test(s(f, "paymentLink")) ? s(f, "paymentLink") : "",
+    showPaymentQr: f.get("showPaymentQr") === "on", logoUrl: s(f, "logoUrl"),
     currency: s(f, "currency") || "EUR", defaultTaxRate: String(Number(s(f, "defaultTaxRate")) || 0),
     hourlyRateCents: toCents(s(f, "hourlyRate")), travelRateCents: toCents(s(f, "travelRate")),
     paymentTermsDays: Number(s(f, "paymentTermsDays")) || 0, invoicePrefix: s(f, "invoicePrefix"),

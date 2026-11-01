@@ -24,6 +24,13 @@ export default async function Settings() {
           <div><label>Bank / payment details</label><textarea name="bankDetails" rows={4} defaultValue={c.bankDetails} /></div>
           <div><label>Invoice footer</label><textarea name="footerNote" rows={4} defaultValue={c.footerNote} /></div>
         </div>
+        <h2 style={{ marginTop: 16 }}>Payment QR code</h2>
+        <p className="muted">Adds a SEPA (EPC / GiroCode) QR to EUR invoices. Banking apps such as Wise, N26, Sparkasse or Revolut scan it to pre-fill IBAN, amount and invoice number.</p>
+        <div className="grid">
+          {field("accountHolder", "Account holder")}{field("iban", "IBAN")}{field("bic", "BIC / SWIFT")}
+          <div><label>Online payment link (optional, https://)</label><input name="paymentLink" defaultValue={c.paymentLink} placeholder="https://wise.com/pay/..." /></div>
+          <div><label><input type="checkbox" name="showPaymentQr" defaultChecked={c.showPaymentQr} style={{ width: "auto" }} /> Show payment QR on invoices</label></div>
+        </div>
         <p><button>Save</button></p>
       </form>
     </>

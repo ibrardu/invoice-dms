@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, numeric, date, timestamp, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, pgTable, uuid, text, integer, numeric, date, timestamp, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 // tenantId = Clerk organization id, or user id for single users. Every query is scoped by it.
 
@@ -12,6 +12,12 @@ export const companies = pgTable("companies", {
   phone: text("phone").notNull().default(""),
   taxId: text("tax_id").notNull().default(""),
   bankDetails: text("bank_details").notNull().default(""),
+  // Payment QR (EPC / GiroCode) and optional online payment link
+  accountHolder: text("account_holder").notNull().default(""),
+  iban: text("iban").notNull().default(""),
+  bic: text("bic").notNull().default(""),
+  paymentLink: text("payment_link").notNull().default(""),
+  showPaymentQr: boolean("show_payment_qr").notNull().default(true),
   logoUrl: text("logo_url").notNull().default(""),
   currency: text("currency").notNull().default("EUR"),
   defaultTaxRate: numeric("default_tax_rate", { precision: 5, scale: 2 }).notNull().default("0"),
