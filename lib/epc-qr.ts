@@ -15,7 +15,20 @@ export function validIban(iban: string) {
  * EPC069-12 SEPA credit transfer QR ("GiroCode"), version 002.
  * Returns an SVG string, or null when it cannot be made (non-EUR, bad IBAN, amount out of range).
  */
-export async function epcQrSvg(o: { name: string; iban: string; bic?: string; amountCents: number; currency: string; reference: string }) {
+type EpcInput = { name: string; iban: string; bic?: string; amountCents: number; currency: string; reference: string };
+
+export async function epcQrSvg(o: EpcInput) {
+  const payload = epcPayload(o);
+  return payload ? QRCode.toString(payload, { type: "svg", errorCorrectionLevel: "M", margin: 0 }) : null;
+}
+
+/** Same QR as a PNG data URL, for the server-generated PDF. */
+export async function epcQrPng(o: EpcInput) {
+  const payload = epcPayload(o);
+  return payload ? QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 0, width: 300 }) : null;
+}
+
+function epcPayload(o: EpcInput) {
   const iban = o.iban.replace(/\s+/g, "").toUpperCase();
   if (o.currency !== "EUR" || !validIban(iban) || o.amountCents < 1 || o.amountCents > 99999999999) return null;
   const clean = (t: string, max: number) => t.replace(/[\r\n]+/g, " ").trim().slice(0, max);
@@ -28,5 +41,5 @@ export async function epcQrSvg(o: { name: string; iban: string; bic?: string; am
     "", "",                          // purpose, structured creditor reference
     clean(o.reference, 140),         // unstructured remittance text
   ].join("\n");
-  return QRCode.toString(payload, { type: "svg", errorCorrectionLevel: "M", margin: 0 });
+  return payload;
 }

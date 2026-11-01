@@ -1,6 +1,7 @@
 
 /** @type {import("next").NextConfig} */
 const config = {
+  serverExternalPackages: ["@react-pdf/renderer"],
   experimental: { serverActions: { bodySizeLimit: "20mb" } },
   async headers() {
     return [{ source: "/(.*)", headers: [

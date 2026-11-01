@@ -24,6 +24,16 @@ export default async function Settings() {
           <div><label>Bank / payment details</label><textarea name="bankDetails" rows={4} defaultValue={c.bankDetails} /></div>
           <div><label>Invoice footer</label><textarea name="footerNote" rows={4} defaultValue={c.footerNote} /></div>
         </div>
+        <h2 style={{ marginTop: 16 }}>Email templates</h2>
+        <p className="muted">Placeholders: {"{number} {company} {client} {contact} {total} {balance} {due} {days}"}</p>
+        <div className="grid">
+          <div><label>Invoice email subject</label><input name="emailSubject" defaultValue={c.emailSubject} /></div>
+          <div><label>Reminder subject</label><input name="reminderSubject" defaultValue={c.reminderSubject} /></div>
+        </div>
+        <div className="grid" style={{ marginTop: 12 }}>
+          <div><label>Invoice email message</label><textarea name="emailBody" rows={6} defaultValue={c.emailBody} /></div>
+          <div><label>Reminder message</label><textarea name="reminderBody" rows={6} defaultValue={c.reminderBody} /></div>
+        </div>
         <h2 style={{ marginTop: 16 }}>Payment QR code</h2>
         <p className="muted">Adds a SEPA (EPC / GiroCode) QR to EUR invoices. Banking apps such as Wise, N26, Sparkasse or Revolut scan it to pre-fill IBAN, amount and invoice number.</p>
         <div className="grid">

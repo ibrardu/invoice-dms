@@ -26,6 +26,10 @@ export const companies = pgTable("companies", {
   paymentTermsDays: integer("payment_terms_days").notNull().default(14),
   invoicePrefix: text("invoice_prefix").notNull().default("#"),
   nextInvoiceNumber: integer("next_invoice_number").notNull().default(1),
+  emailSubject: text("email_subject").notNull().default("Invoice {number} from {company}"),
+  emailBody: text("email_body").notNull().default("Hello {contact},\n\nplease find attached invoice {number} for {total}, due on {due}.\n\nKind regards\n{company}"),
+  reminderSubject: text("reminder_subject").notNull().default("Reminder: invoice {number} is overdue"),
+  reminderBody: text("reminder_body").notNull().default("Hello {contact},\n\na friendly reminder that invoice {number} for {balance} was due on {due} ({days} days ago). The invoice is attached again.\n\nIf you have already paid, please ignore this email.\n\nKind regards\n{company}"),
   footerNote: text("footer_note").notNull().default("Please reference your invoice number in the payment details for proper allocation."),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -152,3 +156,18 @@ export const expenses = pgTable("expenses", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [index("expenses_tenant_date_idx").on(t.tenantId, t.spentOn),
   uniqueIndex("expenses_submission_uq").on(t.tenantId, t.submissionKey)]);
+
+// Every email sent for an invoice (audit trail; also prevents double sends).
+export const invoiceEmails = pgTable("invoice_emails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
+  invoiceId: uuid("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().default("invoice"),          // invoice | reminder
+  toEmail: text("to_email").notNull(),
+  cc: text("cc").notNull().default(""),
+  subject: text("subject").notNull(),
+  providerMessageId: text("provider_message_id").notNull().default(""),
+  submissionKey: text("submission_key"),
+  sentBy: text("sent_by").notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+}, (t) => [index("invoice_emails_invoice_idx").on(t.invoiceId), uniqueIndex("invoice_emails_submission_uq").on(t.tenantId, t.submissionKey)]);
