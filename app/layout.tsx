@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
-import { ClerkProvider, UserButton, OrganizationSwitcher } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth/server";
+import { signOutAction } from "./sign-in/actions";
 import Link from "next/link";
-import { clerkPublishableKey } from "@/lib/clerk-keys";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Invoice DMS", robots: { index: false, follow: false } };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { userId } = await auth();
+  const { data: session } = await auth.getSession();
+  const user = session?.user;
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey()} dynamic signInUrl="/sign-in" signUpUrl="/sign-up">
       <html lang="en">
         <body>
-          {userId && (
+          {user && (
             <header className="top no-print">
               <span className="brand">Invoice DMS</span>
               <nav>
@@ -24,13 +24,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/export">Export</Link>
                 <Link href="/settings">Settings</Link>
               </nav>
-              <OrganizationSwitcher hidePersonal={false} />
-              <UserButton />
+              <span className="muted">{user.email}</span>
+              <form action={signOutAction}><button className="ghost">Sign out</button></form>
             </header>
           )}
           <main>{children}</main>
         </body>
       </html>
-    </ClerkProvider>
   );
 }

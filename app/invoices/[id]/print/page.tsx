@@ -12,7 +12,7 @@ export default async function PrintInvoice({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { inv, client, items, company } = await loadInvoice(tenantId, id);
   const sym = new Intl.NumberFormat("en", { style: "currency", currency: inv.currency }).formatToParts(0).find((p) => p.type === "currency")?.value ?? inv.currency;
-  const m = (cents: number) => `${sym} ${Number.isInteger(cents / 100) ? cents / 100 : (cents / 100).toFixed(2)}`;
+  const m = (cents: number) => `${sym}\u2009${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const addrLines = company.address.split(/\n/).map((l) => l.trim()).filter(Boolean);
   return (
     <div className="inv-wrap">
@@ -47,15 +47,15 @@ export default async function PrintInvoice({ params }: { params: Promise<{ id: s
         <section className="inv-items">
           <h2>Items</h2>
           <table>
-            <thead><tr><th>Name / description</th><th className="r">Price</th><th className="c">Quantity</th><th className="c">Tax rate (%)</th><th className="r">Amount</th></tr></thead>
+            <thead><tr><th>Name / description</th><th className="r">Price</th><th className="r">Quantity</th><th className="r">Tax rate (%)</th><th className="r">Amount</th></tr></thead>
             <tbody>{items.map((it) => <tr key={it.id}><td>{it.description}</td><td className="r">{m(it.unitPriceCents)}</td>
-              <td className="c">{Number(it.quantity)}</td><td className="c">{Number(it.taxRate)}</td><td className="r">{m(it.lineTotalCents)}</td></tr>)}</tbody>
+              <td className="r">{Number(it.quantity)}</td><td className="r">{Number(it.taxRate)}</td><td className="r">{m(it.lineTotalCents)}</td></tr>)}</tbody>
+            <tfoot>
+              <tr className="first"><th colSpan={4} className="r">Subtotal</th><td className="r">{m(inv.subtotalCents)}</td></tr>
+              <tr><th colSpan={4} className="r">Total Tax</th><td className="r">{m(inv.taxCents)}</td></tr>
+              <tr className="grand"><th colSpan={4} className="r">Total</th><td className="r">{m(inv.totalCents)}</td></tr>
+            </tfoot>
           </table>
-          <table className="inv-totals"><tbody>
-            <tr><th>Subtotal</th><td>{m(inv.subtotalCents)}</td></tr>
-            <tr><th>Total Tax</th><td>{m(inv.taxCents)}</td></tr>
-            <tr className="grand"><th>Total</th><td>{m(inv.totalCents)}</td></tr>
-          </tbody></table>
         </section>
 
         {(inv.notes || company.footerNote) && <section className="inv-note">
