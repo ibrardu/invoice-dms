@@ -3,6 +3,7 @@ import { db, clients } from "@/lib/db";
 import { requireTenant } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Export" };
 const TYPES = [
   ["invoices", "Invoices", "One row per invoice: number, dates, client, VAT ID, net, tax, gross, paid, balance"],
   ["items", "Invoice lines", "Every line item with quantity, price, tax rate"],

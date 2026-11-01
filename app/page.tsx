@@ -7,6 +7,9 @@ import { markOverdue } from "@/lib/overdue";
 import { fmt, today } from "@/lib/money";
 import LineChart from "./LineChart";
 import Animate from "./Animate";
+import { emailEnabled } from "@/lib/email";
+import { llamaCloudEnabled } from "@/lib/llamacloud";
+import { bankEnabled } from "@/lib/enablebanking";
 
 export const dynamic = "force-dynamic";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -112,6 +115,27 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const qs = (p: Record<string, string>) => new URLSearchParams({ year: String(year), ...(clientId ? { client: clientId } : {}), metric, ...p }).toString();
   const yearOpts = [...new Set([thisYear, year, ...years.map((y) => y.y)])].sort((a, b) => b - a);
   const period = year === thisYear ? `${new Date(now).toLocaleDateString("en-GB", { month: "long" })} ${year}` : String(year);
+
+  // Getting started: shown until the first invoice exists.
+  const [{ n: invoiceCount }] = await db.select({ n: sql<number>`count(*)::int` }).from(invoices).where(eq(invoices.tenantId, tenantId));
+  const steps: [boolean, string, string, string][] = [
+    [!!(company.name && (company.iban || company.bankDetails)), "Add your name, address and bank details", "/settings", "Settings"],
+    [clientList.length > 0, "Add your first client with their pricing", "/clients", "Clients"],
+    [invoiceCount > 0, "Create your first invoice, by hand or from site visit reports", "/invoices/new", "New invoice"],
+    [emailEnabled(), "Optional: connect Brevo to email invoices", "/settings", "How"],
+    [llamaCloudEnabled(), "Optional: connect LlamaParse to read SVRs and receipts", "/settings", "How"],
+    [bankEnabled(), "Optional: connect your bank to match payments", "/bank", "Bank"],
+  ];
+  if (invoiceCount === 0) return (
+    <div className="stagger">
+      <div className="ov-title"><div><h1>Welcome</h1><p className="callout">Three steps to your first invoice</p></div></div>
+      <section className="card" style={{ maxWidth: 720 }}>
+        <h2>Getting started</h2>
+        <ol className="steps">{steps.map(([done, label, href, cta]) => <li key={label} className={done ? "done" : ""}><span>{label}</span>
+          {done ? <span className="muted">Done</span> : <Link className="btn ghost small" href={href}>{cta}</Link>}</li>)}</ol>
+      </section>
+    </div>
+  );
 
   return (
     <div className="stagger">

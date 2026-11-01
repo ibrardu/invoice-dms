@@ -2,6 +2,7 @@ import { requireTenant } from "@/lib/auth";
 import { getCompany, saveSettings, listSeries, saveSeries, deleteSeries } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Settings" };
 
 export default async function Settings() {
   const { tenantId } = await requireTenant();

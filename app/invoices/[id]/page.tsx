@@ -10,6 +10,12 @@ import { emailEnabled, fillTemplate } from "@/lib/email";
 import SendEmail from "./SendEmail";
 
 export const dynamic = "force-dynamic";
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { tenantId } = await requireTenant();
+  const { id } = await params;
+  const [row] = await db.select({ number: invoices.number, kind: invoices.kind }).from(invoices).where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
+  return { title: row ? `${row.kind === "credit_note" ? "Credit note" : "Invoice"} ${row.number}` : "Invoice" };
+}
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { tenantId } = await requireTenant();

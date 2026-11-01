@@ -6,12 +6,17 @@ import { fmt } from "@/lib/money";
 import { markOverdue } from "@/lib/overdue";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Invoices" };
 
 export default async function Invoices() {
   const { tenantId } = await requireTenant();
   await markOverdue(tenantId);
   const list = await db.select({ inv: invoices, client: clients.name }).from(invoices)
     .innerJoin(clients, eq(clients.id, invoices.clientId)).where(eq(invoices.tenantId, tenantId)).orderBy(desc(invoices.createdAt));
+  if (!list.length) return (
+    <div className="state"><h1>No invoices yet</h1><p className="muted">Create one by hand, or upload site visit reports and let the lines fill in.</p>
+      <div className="row"><Link className="btn" href="/invoices/new">New invoice</Link></div></div>
+  );
   return (
     <>
       <div className="row" style={{ justifyContent: "space-between" }}><h1>Invoices</h1><Link className="btn" href="/invoices/new">New invoice</Link></div>

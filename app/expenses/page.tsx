@@ -10,6 +10,7 @@ import ExpenseForm from "./ExpenseForm";
 import Animate from "../Animate";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Expenses" };
 const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
 
 export default async function Expenses({ searchParams }: { searchParams: Promise<{ year?: string; month?: string; client?: string; cat?: string; edit?: string }> }) {

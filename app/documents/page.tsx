@@ -4,6 +4,7 @@ import { requireTenant } from "@/lib/auth";
 import { uploadDocument, deleteDocument } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Documents" };
 const CATS = ["general", "svr", "receipt", "contract", "receipt", "invoice", "quote", "correspondence", "other"];
 
 export default async function Documents({ searchParams }: { searchParams: Promise<{ q?: string; cat?: string }> }) {
@@ -39,6 +40,7 @@ export default async function Documents({ searchParams }: { searchParams: Promis
         <select name="cat" defaultValue={cat} style={{ width: 180 }}><option value="">All categories</option>{CATS.map((c) => <option key={c}>{c}</option>)}</select>
         <button>Search</button>
       </form>
+      {list.length === 0 ? <p className="empty">{q || cat ? "No documents match this search." : "No documents yet. SVRs and receipts you read land here automatically; you can also upload any file above."}</p> :
       <div className="card"><table>
         <thead><tr><th>Title</th><th>Category</th><th>Tags</th><th>Client</th><th>Invoice</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
         <tbody>{list.map(({ d, client, invoice }) => <tr key={d.id}>
@@ -46,7 +48,7 @@ export default async function Documents({ searchParams }: { searchParams: Promis
           <td>{(d.sizeBytes / 1024).toFixed(0)} KB</td><td>{d.createdAt.toISOString().slice(0, 10)}</td>
           <td><form action={deleteDocument}><input type="hidden" name="id" value={d.id} /><button className="danger">Delete</button></form></td>
         </tr>)}</tbody>
-      </table></div>
+      </table></div>}
     </>
   );
 }
