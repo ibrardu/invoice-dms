@@ -180,3 +180,36 @@ export const invoiceEmails = pgTable("invoice_emails", {
   sentBy: text("sent_by").notNull(),
   sentAt: timestamp("sent_at").notNull().defaultNow(),
 }, (t) => [index("invoice_emails_invoice_idx").on(t.invoiceId), uniqueIndex("invoice_emails_submission_uq").on(t.tenantId, t.submissionKey)]);
+
+// Bank connection via Enable Banking (PSD2, read-only). One row per authorised bank session.
+export const bankConnections = pgTable("bank_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
+  bankName: text("bank_name").notNull(),
+  country: text("country").notNull(),
+  sessionId: text("session_id").notNull(),
+  accounts: text("accounts").notNull().default("[]"),          // JSON: [{ uid, iban, name, currency }]
+  validUntil: timestamp("valid_until"),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("bank_connections_tenant_idx").on(t.tenantId)]);
+
+// Incoming bank transactions and how they were matched to invoices.
+export const bankTransactions = pgTable("bank_transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
+  connectionId: uuid("connection_id").references(() => bankConnections.id, { onDelete: "set null" }),
+  externalId: text("external_id").notNull(),
+  accountUid: text("account_uid").notNull(),
+  bookingDate: date("booking_date").notNull(),
+  amountCents: integer("amount_cents").notNull(),               // positive = money in
+  currency: text("currency").notNull(),
+  counterparty: text("counterparty").notNull().default(""),
+  reference: text("reference").notNull().default(""),
+  status: text("status").notNull().default("new"),              // new | suggested | matched | ignored
+  invoiceId: uuid("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+  matchReason: text("match_reason").notNull().default(""),
+  matchExact: boolean("match_exact").notNull().default(false),
+  paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("bank_tx_external_uq").on(t.tenantId, t.externalId), index("bank_tx_tenant_date_idx").on(t.tenantId, t.bookingDate)]);
