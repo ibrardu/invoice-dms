@@ -28,6 +28,11 @@ export default async function Clients({ searchParams }: { searchParams: Promise<
         <h2 style={{ marginTop: 16 }}>Pricing for site visits</h2>
         <p className="muted">Default way to price lines generated from SVRs. You can switch mode per import on the invoice page.</p>
         <div className="grid">
+          <div><label>Country</label><input name="country" defaultValue={e?.country ?? ""} placeholder="Germany, Netherlands, Australia" /></div>
+          <div><label>VAT on invoices</label><select name="vatTreatment" defaultValue={e?.vatTreatment ?? "domestic"}>
+            <option value="domestic">German client: charge German VAT</option>
+            <option value="eu_reverse">EU business: reverse charge, 0%</option>
+            <option value="non_eu">Outside the EU: not taxable in Germany, 0%</option></select></div>
           <div><label>Invoice number prefix</label><select name="defaultSeriesId" defaultValue={e?.defaultSeriesId ?? ""}>
             <option value="">Use default</option>{series.map((x) => <option key={x.id} value={x.id}>{x.prefix} ({x.mode === "date" ? "date" : "running"})</option>)}</select></div>
           <div><label>Default pricing mode</label><select name="pricingMode" defaultValue={e?.pricingMode ?? "half_full"}>

@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { loadInvoice } from "./invoice-data";
+import { vatNote } from "./tax";
 
 type Loaded = Awaited<ReturnType<typeof loadInvoice>>;
 export type PdfData = Pick<Loaded, "inv" | "client" | "items" | "company"> & { balance: number; qr: string | null };
@@ -40,7 +41,7 @@ export async function renderInvoicePdf({ inv, client, items, company, balance, q
   const sym = new Intl.NumberFormat("en", { style: "currency", currency: inv.currency }).formatToParts(0).find((p) => p.type === "currency")?.value ?? inv.currency;
   const m = (c: number) => `${sym} ${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const addr = company.address.split(/\n/).map((l) => l.trim()).filter(Boolean);
-  const note = [inv.notes, company.footerNote].filter(Boolean).join("\n");
+  const note = [vatNote(company.vatStatus, client.vatTreatment, company.taxId, client.taxId), inv.notes, company.footerNote].filter(Boolean).join("\n");
 
   const doc = (
     <Document title={`Invoice ${inv.number}`} author={company.name} subject={`Invoice ${inv.number} for ${client.name}`}>

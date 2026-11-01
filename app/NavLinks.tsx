@@ -4,9 +4,10 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [["/", "Overview"], ["/invoices", "Invoices"], ["/clients", "Clients"], ["/expenses", "Expenses"], ["/documents", "Documents"], ["/export", "Export"], ["/settings", "Settings"]] as const;
 
-export default function NavLinks() {
+export default function NavLinks({ elster = false }: { elster?: boolean }) {
   const path = usePathname();
-  return <nav>{LINKS.map(([href, label]) => {
+  const links = elster ? [...LINKS.slice(0, 5), ["/elster", "ELSTER"] as const, ...LINKS.slice(5)] : LINKS;
+  return <nav>{links.map(([href, label]) => {
     const on = href === "/" ? path === "/" : path.startsWith(href);
     return <Link key={href} href={href} aria-current={on ? "page" : undefined}>{label}</Link>;
   })}</nav>;

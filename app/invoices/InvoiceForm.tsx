@@ -13,16 +13,18 @@ type RVisit = Visit & { mode: Mode; rates: Rates; tax: number };
 type Series = { id: string; prefix: string; mode: string; isDefault: boolean };
 type Preload = { visits: Visit[]; lines: Item[]; supplyDates: string; mode: Mode; rates: Rates; tax: number } | null;
 type OpenExpense = { id: string; clientId: string | null; spentOn: string; description: string; amountCents: number };
-type Props = { stepwise?: boolean; openExpenses?: OpenExpense[]; preload?: Preload; presetClient?: string; series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
+type Props = { stepwise?: boolean; openExpenses?: OpenExpense[]; preload?: Preload; presetClient?: string; series: Series[]; clients: { id: string; name: string; seriesId: string | null; vatTreatment: string }[]; noVat?: boolean; currency: string; defaultTax: number;
   initial?: { id: string; number: string; clientId: string; issueDate: string; dueDate: string; notes: string; supplyDates: string; items: Item[] } };
 
-export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient, openExpenses = [], stepwise = false }: Props) {
+export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient, openExpenses = [], stepwise = false, noVat = false }: Props) {
   const defSeries = series.find((x) => x.isDefault)?.id ?? series[0]?.id ?? "";
-  const blank = (): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: defaultTax });
+  const presetTreatment = clients.find((c) => c.id === presetClient)?.vatTreatment;
+  const firstTax = noVat || (presetTreatment && presetTreatment !== "domestic") ? 0 : defaultTax;
+  const blank = (tax?: number): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: tax ?? lineTax() });
   const [submissionKey] = useState(() => crypto.randomUUID());
   const [linesRef] = useAutoAnimate<HTMLTableSectionElement>({ duration: 220 });
   const [visitsRef] = useAutoAnimate<HTMLTableSectionElement>({ duration: 220 });
-  const [items, setItems] = useState<Item[]>(initial?.items ?? (preload?.lines.length ? preload.lines : [blank()]));
+  const [items, setItems] = useState<Item[]>(initial?.items ?? (preload?.lines.length ? preload.lines : [blank(firstTax)]));
   const upd = (i: number, k: keyof Item, v: string) => setItems(items.map((it, j) => j === i ? { ...it, [k]: k === "description" ? v : Number(v) } : it));
   const f = (n: number) => new Intl.NumberFormat("en-IE", { style: "currency", currency }).format(n);
   const [visits, setVisits] = useState<RVisit[]>(preload ? preload.visits.map((v) => ({ ...v, mode: preload.mode, rates: preload.rates, tax: preload.tax })) : []);
@@ -45,6 +47,8 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
   function pickClient(id: string) {
     setClientId(id);
     const c = clients.find((x) => x.id === id);
+    // Clients outside Germany (or a §19 small business) are invoiced without German VAT.
+    if (noVat || (c && c.vatTreatment !== "domestic")) setItems((its) => its.map((it) => ({ ...it, taxRate: 0 })));
     if (!initial && c?.seriesId && series.some((x) => x.id === c.seriesId)) setSeriesId(c.seriesId);
   }
 
@@ -57,6 +61,11 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
     setVisits((vs) => [...vs, ...r.visits.map((v) => ({ ...v, mode: r.mode, rates: r.rates, tax: r.tax }))]);
   }
 
+  function lineTax() {
+    const c = clients.find((x) => x.id === clientId);
+    return noVat || (c && c.vatTreatment !== "domestic") ? 0 : defaultTax;
+  }
+
   async function importSvr(fd: FormData) {
     if (!clientId) { setSvrMsg("Select the client first so the right rates are used."); return; }
     const files = fd.getAll("svr").filter((x): x is File => x instanceof File && x.size > 0);
@@ -66,7 +75,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
 
     if (!stepwise) {   // fallback provider: one request, no per-step tracking
       setProgress(files.map((f) => ({ name: f.name, stage: "reading", startedAt: Date.now(), readStartedAt: Date.now() })));
-      fd.set("clientId", clientId); fd.set("taxRate", String(defaultTax));
+      fd.set("clientId", clientId); fd.set("taxRate", String(lineTax()));
       const r = await extractSvr(fd);
       setBusy(false);
       if (!r.ok) { setProgress((l) => l.map((f) => ({ ...f, stage: "failed", error: r.error }))); return; }
@@ -97,7 +106,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
     const ok = read.filter((x): x is NonNullable<typeof x> => !!x);
     if (ok.length) {
       const mode = String(fd.get("mode") ?? "");
-      const r = await finishSvr(ok.map(({ i: _i, ...x }) => x), clientId, mode, defaultTax);
+      const r = await finishSvr(ok.map(({ i: _i, ...x }) => x), clientId, mode, lineTax());
       if (r.ok) { addResult(r); ok.forEach((x) => patch(x.i, { stage: "done" })); }
       else ok.forEach((x) => patch(x.i, { stage: "failed", error: r.error }));
     }

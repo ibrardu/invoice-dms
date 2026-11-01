@@ -1,6 +1,9 @@
 import { and, asc, eq, gte, lt, ne } from "drizzle-orm";
 import { db, invoices, invoiceItems, clients, payments, documents, expenses } from "@/lib/db";
 import { categoryLabel } from "@/lib/expense-categories";
+import { loadTax } from "@/lib/tax-data";
+import { periodOf } from "@/lib/tax";
+import { getCompany } from "@/lib/actions";
 import { requireTenant } from "@/lib/auth";
 
 type Row = Record<string, string | number | null>;
@@ -76,6 +79,26 @@ export async function GET(req: Request) {
         gross: eur(e.amountCents), vat_rate: Number(e.vatRate), vat: eur(e.amountCents - net), net: eur(net), currency: e.currency,
         paid_with: e.paymentMethod, client: c, billable: e.billable ? "yes" : "no", invoice_number: n ?? "", receipt: e.receiptDocId ? "yes" : "no" };
     });
+  } else if (type === "ustva" || type === "euer") {
+    const company = await getCompany(tenantId);
+    const y = year ?? new Date().getUTCFullYear();
+    const n = Number(u.searchParams.get("p")) || 1;
+    const p = type === "euer" ? periodOf(y, "year") : periodOf(y, company.vatPeriod === "monthly" ? "month" : "quarter", n);
+    const r = await loadTax(tenantId, p, company.taxBasis === "soll" ? "soll" : "ist", company.currency);
+    rows = type === "ustva" ? [
+      { kz: 81, field: "Steuerpflichtige Umsätze 19 %", base: Math.trunc(r.kz81.netCents / 100), tax: eur(r.kz81.taxCents) },
+      { kz: 86, field: "Steuerpflichtige Umsätze 7 %", base: Math.trunc(r.kz86.netCents / 100), tax: eur(r.kz86.taxCents) },
+      { kz: 21, field: "Nicht steuerbare sonstige Leistungen EU (§ 18b)", base: Math.trunc(r.kz21.netCents / 100), tax: null },
+      { kz: 45, field: "Übrige nicht steuerbare Umsätze", base: Math.trunc(r.kz45.netCents / 100), tax: null },
+      { kz: 66, field: "Vorsteuerbeträge", base: null, tax: eur(r.kz66) },
+      { kz: 83, field: "Verbleibende Umsatzsteuer-Vorauszahlung", base: null, tax: eur(r.kz83) },
+    ] : [
+      { item: "Income subject to German VAT (net)", amount: eur(r.income.taxableNetCents) },
+      { item: "Income not taxable in Germany / reverse charge (net)", amount: eur(r.income.nonTaxableNetCents) },
+      { item: "VAT received", amount: eur(r.income.vatReceivedCents) },
+      ...r.expenses.map((e) => ({ item: `Expenses: ${categoryLabel(e.category)} (net)`, amount: -eur(e.netCents) })),
+      { item: "Input VAT paid", amount: eur(r.kz66) },
+    ];
   } else return new Response("Unknown export type", { status: 400 });
 
   const name = `${type}${year ? `-${year}` : ""}.csv`;

@@ -26,7 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {user && (
           <header className="top no-print">
             <Link href="/" className="brand"><span className="mark">{initials}</span><span className="name">{name}</span></Link>
-            <NavLinks />
+            <NavLinks elster={!!company?.elsterEnabled} />
             <span className="who">{user.email}</span>
             <form action={signOutAction}><button className="ghost small">Sign out</button></form>
           </header>

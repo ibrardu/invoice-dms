@@ -26,6 +26,12 @@ export const companies = pgTable("companies", {
   paymentTermsDays: integer("payment_terms_days").notNull().default(14),
   invoicePrefix: text("invoice_prefix").notNull().default("#"),
   nextInvoiceNumber: integer("next_invoice_number").notNull().default(1),
+  // Tax (ELSTER figures). vatStatus: regular | kleinunternehmer. taxBasis: ist (on payment) | soll (on invoice).
+  elsterEnabled: boolean("elster_enabled").notNull().default(false),
+  vatStatus: text("vat_status").notNull().default("regular"),
+  taxBasis: text("tax_basis").notNull().default("ist"),
+  vatPeriod: text("vat_period").notNull().default("quarterly"),
+  taxNumber: text("tax_number").notNull().default(""),
   emailSubject: text("email_subject").notNull().default("Invoice {number} from {company}"),
   emailBody: text("email_body").notNull().default("Hello {contact},\n\nplease find attached invoice {number} for {total}, due on {due}.\n\nKind regards\n{company}"),
   reminderSubject: text("reminder_subject").notNull().default("Reminder: invoice {number} is overdue"),
@@ -59,6 +65,9 @@ export const clients = pgTable("clients", {
   // Pricing for SVR-generated lines. 0 = fall back to company hourly rate.
   // hourly | half_full (half-day / full-day by hours) | full_day (fixed per day) | task (fixed per task/visit)
   defaultSeriesId: uuid("default_series_id"),
+  // VAT treatment of this client's invoices: domestic (German VAT) | eu_reverse (EU business, reverse charge) | non_eu (outside the EU)
+  country: text("country").notNull().default(""),
+  vatTreatment: text("vat_treatment").notNull().default("domestic"),
   pricingMode: text("pricing_mode").notNull().default("half_full"),
   taskRateCents: integer("task_rate_cents").notNull().default(0),
   halfDayRateCents: integer("half_day_rate_cents").notNull().default(0),
