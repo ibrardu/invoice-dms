@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { saveExpense, type ExpenseFormState } from "@/lib/expenses";
-import { readReceipt } from "@/lib/receipt";
+import { readReceipt, startReceipt, checkReceipt } from "@/lib/receipt";
+import ExtractProgress, { type FileProgress } from "../ExtractProgress";
 import { applyMap, RECEIPT_TO_EXPENSE, validateExpense } from "@/lib/field-maps";
 import { EXPENSE_CATEGORIES } from "@/lib/expense-categories";
 
@@ -31,6 +32,7 @@ export default function ExpenseForm({ edit, clients, currency, today }: { edit: 
   const [local, setLocal] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
   const [reading, setReading] = useState(false);
+  const [progress, setProgress] = useState<FileProgress[]>([]);
   const errors = { ...local, ...(state?.errors ?? {}) };
 
   // After a successful add: clear the form and start a fresh submission key.
@@ -49,10 +51,28 @@ export default function ExpenseForm({ edit, clients, currency, today }: { edit: 
   async function read() {
     const file = fileInput.current?.files?.[0];
     if (!form.current || !file) { setMsg("Choose a receipt first"); return; }
-    setReading(true); setMsg("Reading receipt...");
+    setReading(true); setMsg("");
     const fd = new FormData(); fd.set("receipt", file);
-    const r = await readReceipt(fd);
+    const t0 = Date.now();
+    setProgress([{ name: file.name, stage: "uploading", startedAt: t0 }]);
+    const r = await (async () => {
+      const st = await startReceipt(fd);
+      if (st === null) {                                   // fallback provider: single request
+        setProgress([{ name: file.name, stage: "reading", startedAt: t0, readStartedAt: Date.now() }]);
+        return readReceipt(fd);
+      }
+      if (!st.ok) return st;
+      setProgress([{ name: file.name, stage: "reading", startedAt: t0, readStartedAt: Date.now() }]);
+      for (const end = Date.now() + 120000; Date.now() < end;) {
+        await new Promise((res) => setTimeout(res, 1200));
+        const c = await checkReceipt(st.jobId);
+        if (c.state === "done") return c.result;
+        if (c.state === "failed") return { ok: false as const, error: c.error };
+      }
+      return { ok: false as const, error: "Took longer than 2 minutes" };
+    })();
     setReading(false);
+    setProgress([{ name: file.name, stage: r.ok ? "done" : "failed", error: r.ok ? undefined : r.error, startedAt: t0 }]);
     if (!r.ok) { setMsg(r.error); return; }
     const { values, missing } = applyMap(r.data as Record<string, unknown>, RECEIPT_TO_EXPENSE);
     const filled = new Set<string>();
@@ -95,6 +115,7 @@ export default function ExpenseForm({ edit, clients, currency, today }: { edit: 
             if (s !== f) { const dt = new DataTransfer(); dt.items.add(s); fileInput.current!.files = dt.files; } }} />
         <button type="button" className="ghost" onClick={read} disabled={reading}>{reading ? "Reading..." : "Read receipt"}</button>
       </div>
+      {reading && <ExtractProgress files={progress} />}
       {msg && <p className="muted" role="status" style={{ margin: "6px 0 0" }}>{msg}</p>}
       {err("receipt")}
 

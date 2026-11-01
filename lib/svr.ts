@@ -6,7 +6,7 @@ import { extractText, getDocumentProxy } from "unpdf";
 import { db, documents, clients } from "./db";
 import { requireTenant } from "./auth";
 import { getCompany } from "./actions";
-import { llamaCloudEnabled, llamaExtract } from "./llamacloud";
+import { llamaCloudEnabled, llamaExtract, startExtract, checkExtract } from "./llamacloud";
 import { priceVisit, hoursBetween, dmy, type Mode, type Rates, type Line } from "./pricing";
 
 const n = z.coerce.number().catch(0);
@@ -172,4 +172,77 @@ export async function visitsFromDocs(ids: string[], clientId: string) {
   const tax = Number(company.defaultTaxRate) || 0;
   const { rates, lines, supplyDates } = priceVisits(visits, client, company, mode, tax);
   return { visits, lines, supplyDates, mode, rates, tax };
+}
+
+/* ---------- Step-by-step reading with progress (LlamaCloud) ----------
+   startSvr: store the file and start the LlamaParse job (returns at once)
+   checkSvr: one status check; the browser calls it every ~1.5 s and shows elapsed time
+   finishSvr: save the documents and price the visits                                  */
+
+export type SvrRead = z.infer<typeof visitSchema>;
+export type SvrStarted = { ok: true; jobId: string; blobPath: string; fileName: string; contentType: string; size: number } | { ok: false; error: string };
+
+export async function startSvr(f: FormData): Promise<SvrStarted> {
+  try {
+    const { tenantId } = await requireTenant();
+    if (!llamaCloudEnabled()) return { ok: false, error: "LlamaParse is not set up (LLAMA_CLOUD_API_KEY)." };
+    const file = f.get("svr");
+    if (!(file instanceof File) || !file.size) return { ok: false, error: "Empty file" };
+    if (file.size > 10 * 1024 * 1024) return { ok: false, error: `${file.name} is larger than 10 MB` };
+    const safe = file.name.replace(/[^\w.\-]+/g, "_").slice(-120);
+    const contentType = file.type || "application/octet-stream";
+    // Store our copy and start LlamaParse at the same time.
+    const [blob, jobId] = await Promise.all([
+      put(`${tenantId}/${crypto.randomUUID()}-${safe}`, file, { access: "private", contentType }),
+      startExtract(file, SVR_JSON_SCHEMA, PROMPT),
+    ]);
+    return { ok: true, jobId, blobPath: blob.pathname, fileName: file.name, contentType, size: file.size };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not upload" };
+  }
+}
+
+export async function checkSvr(jobId: string, fileName: string): Promise<{ state: "running" } | { state: "done"; visit: SvrRead } | { state: "failed"; error: string }> {
+  try {
+    await requireTenant();
+    if (!/^[\w-]{4,80}$/.test(jobId)) return { state: "failed", error: "Bad job id" };
+    const st = await checkExtract(jobId, fileName);
+    if (st.state !== "done") return st;
+    const v = visitSchema.parse(st.data);
+    const h = hoursBetween(v.start, v.end);               // recompute, don't trust model arithmetic
+    v.hours = h || (v.start && v.end ? v.hours : 0);
+    return { state: "done", visit: v };
+  } catch (e) {
+    return { state: "failed", error: e instanceof Error ? e.message : "Could not check" };
+  }
+}
+
+type Finished = { visit: SvrRead; blobPath: string; fileName: string; contentType: string; size: number };
+
+export async function finishSvr(items: Finished[], clientId: string, modeIn: string, taxIn: number):
+  Promise<{ ok: true; visits: Visit[]; lines: Line[]; supplyDates: string; mode: Mode; rates: Rates; tax: number } | { ok: false; error: string }> {
+  try {
+    const { tenantId, userId } = await requireTenant();
+    if (!items.length || items.length > 15) return { ok: false, error: "Nothing to add" };
+    const company = await getCompany(tenantId);
+    const [client] = clientId ? await db.select().from(clients).where(and(eq(clients.id, clientId), eq(clients.tenantId, tenantId))) : [];
+    const visits: Visit[] = [];
+    for (const it of items) {
+      if (!it.blobPath.startsWith(`${tenantId}/`)) return { ok: false, error: "File does not belong to this workspace" };
+      const v = visitSchema.parse(it.visit);
+      const [doc] = await db.insert(documents).values({ tenantId, uploadedBy: userId, clientId: client?.id ?? null,
+        title: `SVR ${v.date ?? ""} ${v.ticket ?? ""}`.replace(/\s+/g, " ").trim(), fileName: it.fileName.slice(0, 200),
+        contentType: it.contentType.slice(0, 100), sizeBytes: Math.max(0, Math.round(it.size)), blobPath: it.blobPath, category: "svr",
+        visitDate: /^\d{4}-\d{2}-\d{2}$/.test(v.date ?? "") ? v.date : null, visitHours: v.hours ? String(v.hours) : null,
+        tags: [v.ticket, v.endCustomer, v.site, v.engineer].filter(Boolean).join(", ") }).returning({ id: documents.id });
+      visits.push({ ...v, fileName: it.fileName, docId: doc.id, warnings: [] });
+    }
+    visits.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+    const mode = z.enum(["hourly", "half_full", "full_day", "task"]).catch((client?.pricingMode as "hourly") ?? "hourly").parse(modeIn || undefined);
+    const tax = Number.isFinite(taxIn) ? taxIn : Number(company.defaultTaxRate) || 0;
+    const { rates, lines, supplyDates } = priceVisits(visits, client, company, mode, tax);
+    return { ok: true, visits, lines, supplyDates, mode, rates, tax };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save the SVRs" };
+  }
 }

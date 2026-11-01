@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { saveInvoice, previewNumber } from "@/lib/actions";
-import { extractSvr, type Visit } from "@/lib/svr";
+import { extractSvr, startSvr, checkSvr, finishSvr, type Visit, type SvrRead } from "@/lib/svr";
+import ExtractProgress, { type FileProgress } from "../ExtractProgress";
 import { priceVisit, hoursBetween, type Mode, type Rates } from "@/lib/pricing";
 
 type Item = { description: string; quantity: number; unitPrice: number; taxRate: number; visitKey?: string };
@@ -12,10 +13,10 @@ type RVisit = Visit & { mode: Mode; rates: Rates; tax: number };
 type Series = { id: string; prefix: string; mode: string; isDefault: boolean };
 type Preload = { visits: Visit[]; lines: Item[]; supplyDates: string; mode: Mode; rates: Rates; tax: number } | null;
 type OpenExpense = { id: string; clientId: string | null; spentOn: string; description: string; amountCents: number };
-type Props = { openExpenses?: OpenExpense[]; preload?: Preload; presetClient?: string; series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
+type Props = { stepwise?: boolean; openExpenses?: OpenExpense[]; preload?: Preload; presetClient?: string; series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
   initial?: { id: string; number: string; clientId: string; issueDate: string; dueDate: string; notes: string; supplyDates: string; items: Item[] } };
 
-export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient, openExpenses = [] }: Props) {
+export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient, openExpenses = [], stepwise = false }: Props) {
   const defSeries = series.find((x) => x.isDefault)?.id ?? series[0]?.id ?? "";
   const blank = (): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: defaultTax });
   const [submissionKey] = useState(() => crypto.randomUUID());
@@ -47,18 +48,62 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
     if (!initial && c?.seriesId && series.some((x) => x.id === c.seriesId)) setSeriesId(c.seriesId);
   }
 
+  const [progress, setProgress] = useState<FileProgress[]>([]);
+  const patch = (i: number, p: Partial<FileProgress>) => setProgress((list) => list.map((f, j) => j === i ? { ...f, ...p } : f));
+
+  function addResult(r: { visits: Visit[]; lines: Item[]; supplyDates: string; mode: Mode; rates: Rates; tax: number }) {
+    setItems((its) => [...its.filter((it) => it.description.trim()), ...r.lines]);
+    setSupply((s) => r.supplyDates || s);
+    setVisits((vs) => [...vs, ...r.visits.map((v) => ({ ...v, mode: r.mode, rates: r.rates, tax: r.tax }))]);
+  }
+
   async function importSvr(fd: FormData) {
     if (!clientId) { setSvrMsg("Select the client first so the right rates are used."); return; }
-    fd.set("clientId", clientId); fd.set("taxRate", String(defaultTax));
-    setBusy(true); setSvrMsg("Reading SVRs with Llama...");
-    const r = await extractSvr(fd);
+    const files = fd.getAll("svr").filter((x): x is File => x instanceof File && x.size > 0);
+    if (!files.length) { setSvrMsg("Choose one or more SVR files."); return; }
+    if (files.length > 15) { setSvrMsg("Up to 15 SVRs at a time."); return; }
+    setBusy(true); setSvrMsg("");
+
+    if (!stepwise) {   // fallback provider: one request, no per-step tracking
+      setProgress(files.map((f) => ({ name: f.name, stage: "reading", startedAt: Date.now(), readStartedAt: Date.now() })));
+      fd.set("clientId", clientId); fd.set("taxRate", String(defaultTax));
+      const r = await extractSvr(fd);
+      setBusy(false);
+      if (!r.ok) { setProgress((l) => l.map((f) => ({ ...f, stage: "failed", error: r.error }))); return; }
+      setProgress((l) => l.map((f) => ({ ...f, stage: "done" })));
+      addResult(r);
+      setSvrMsg(`Read ${r.visits.length} SVR(s). Check the lines below.`);
+      return;
+    }
+
+    // Stepwise: upload -> LlamaParse reading (polled) -> pricing, tracked per file.
+    const t0 = Date.now();
+    setProgress(files.map((f) => ({ name: f.name, stage: "uploading", startedAt: t0 })));
+    const read = await Promise.all(files.map(async (file, i) => {
+      const one = new FormData(); one.set("svr", file);
+      const st = await startSvr(one);
+      if (!st.ok) { patch(i, { stage: "failed", error: st.error }); return null; }
+      patch(i, { stage: "reading", readStartedAt: Date.now() });
+      const deadline = Date.now() + 180000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const c = await checkSvr(st.jobId, file.name);
+        if (c.state === "done") { patch(i, { stage: "pricing" }); return { visit: c.visit as SvrRead, blobPath: st.blobPath, fileName: st.fileName, contentType: st.contentType, size: st.size, i }; }
+        if (c.state === "failed") { patch(i, { stage: "failed", error: c.error }); return null; }
+      }
+      patch(i, { stage: "failed", error: "Took longer than 3 minutes" });
+      return null;
+    }));
+    const ok = read.filter((x): x is NonNullable<typeof x> => !!x);
+    if (ok.length) {
+      const mode = String(fd.get("mode") ?? "");
+      const r = await finishSvr(ok.map(({ i: _i, ...x }) => x), clientId, mode, defaultTax);
+      if (r.ok) { addResult(r); ok.forEach((x) => patch(x.i, { stage: "done" })); }
+      else ok.forEach((x) => patch(x.i, { stage: "failed", error: r.error }));
+    }
     setBusy(false);
-    if (!r.ok) { setSvrMsg(r.error); return; }
-    const keep = items.filter((it) => it.description.trim());
-    setItems([...keep, ...r.lines]);
-    setSupply(r.supplyDates || supply);
-    setVisits([...visits, ...r.visits.map((v) => ({ ...v, mode: r.mode, rates: r.rates, tax: r.tax }))]);
-    setSvrMsg(`Read ${r.visits.length} SVR(s). Check the lines below; expenses without an amount are set to 0.`);
+    const failed = files.length - ok.length;
+    setSvrMsg(`${ok.length} of ${files.length} read in ${Math.round((Date.now() - t0) / 1000)} s.${failed ? " Failed files can be uploaded again." : ""} Check the lines below.`);
   }
 
   // Edit times/hours of an imported visit and reprice its invoice line.
@@ -103,6 +148,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
           <option value="full_day">Fixed full day</option><option value="hourly">Hourly</option><option value="task">Per task</option></select>
         <input type="file" name="svr" multiple accept=".pdf,.txt,text/plain,application/pdf,image/*" style={{ flex: 1, width: "auto" }} required />
         <button disabled={busy}>{busy ? "Reading..." : "Extract"}</button></div>
+      <ExtractProgress files={progress} />
       {svrMsg && <p>{svrMsg}</p>}
       {visits.length > 0 && <table><thead><tr><th>Date</th><th>Start</th><th>End</th><th>Hours</th><th>Ticket</th><th>Site / customer</th><th>Check</th></tr></thead>
         <tbody ref={visitsRef}>{visits.map((v) => <tr key={v.docId}>
