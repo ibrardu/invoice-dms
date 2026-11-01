@@ -96,7 +96,7 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial, se
       <div className="row"><select name="mode" defaultValue="" style={{ width: 240 }}>
           <option value="">Client default pricing</option><option value="half_full">Half / full day</option>
           <option value="full_day">Fixed full day</option><option value="hourly">Hourly</option><option value="task">Per task</option></select>
-        <input type="file" name="svr" multiple accept=".pdf,.txt,text/plain,application/pdf" style={{ flex: 1, width: "auto" }} required />
+        <input type="file" name="svr" multiple accept=".pdf,.txt,text/plain,application/pdf,image/*" style={{ flex: 1, width: "auto" }} required />
         <button disabled={busy}>{busy ? "Reading..." : "Extract"}</button></div>
       {svrMsg && <p>{svrMsg}</p>}
       {visits.length > 0 && <table><thead><tr><th>Date</th><th>Start</th><th>End</th><th>Hours</th><th>Ticket</th><th>Site / customer</th><th>Check</th></tr></thead>
