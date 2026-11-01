@@ -118,7 +118,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
       <div className="ov-title">
         <div>
           <h1>{period}</h1>
-          <p className="sub">{finding}</p>
+          <p className={oldest || unbilled.length ? "callout" : "callout calm"}>{finding}</p>
         </div>
         <form className="row">
           <select name="year" defaultValue={year} aria-label="Year" style={{ width: 96 }}>{yearOpts.map((y) => <option key={y}>{y}</option>)}</select>

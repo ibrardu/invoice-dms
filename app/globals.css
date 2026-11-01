@@ -1,16 +1,19 @@
 /* Achromatic ledger: ink on paper. Colour only on data (one chart hue) and on small change signals.
    Values from the taste-skill "achromatic-ledger" sheet and unslop tokens. 4px spacing grid. */
 :root{
-  --ground:#f4f4f2; --surface:#fff; --raised:#eeeeee; --border:#e6e6e6; --rule:#f0f0f0; --control:#d4d4d4;
-  --text:#0a0a0a; --muted:#6b6b6b; --accent:#141414;
-  --positive:#2e7d32; --negative:#c4242a; --warning:#92400e; --chart:#1d5fbf; --chart-2:#a3a3a3;
-  --radius-card:8px; --radius-control:6px;
+  /* Steep palette (app-sized): white paper, mist cards, ink, one warm peach/sienna accent */
+  --ground:#ffffff; --surface:#f2f2f3; --fog:#fafafb; --raised:#e9e9eb; --border:#ececec; --rule:#e4e4e6; --control:#d6d6da;
+  --text:#17191c; --muted:#777b86; --tag:#979799; --placeholder:#a3a6af; --accent:#17191c;
+  --peach:#fbe1d1; --sienna:#5d2a1a;
+  --positive:#2e7d32; --negative:#b42318; --warning:#92400e; --chart:#5d2a1a; --chart-2:#c9c9ce;
+  --radius-card:24px; --radius-small:16px; --radius-control:12px; --radius-pill:9999px;
+  --serif:var(--font-serif),"Source Serif 4",Georgia,serif;
   /* Fluid layout: clamp(min at 360px, slope, max at 1440px) instead of breakpoint jumps */
   --gutter:clamp(16px, 0.74vw + 13.3px, 24px);
   --gap:clamp(8px, 0.37vw + 6.7px, 12px);
   --pad:clamp(16px, 0.74vw + 13.3px, 24px);
   --section:clamp(16px, 1.48vw + 10.7px, 32px);
-  --fs-title:clamp(20px, 0.37vw + 18.7px, 24px);
+  --fs-title:clamp(28px, 0.74vw + 25.3px, 36px);
   --fs-kpi:clamp(22px, 0.74vw + 19.3px, 30px);
   --fs-tab:clamp(17px, 0.28vw + 16px, 20px);
   --ease:cubic-bezier(0.23,1,0.32,1);
@@ -39,9 +42,9 @@ a:hover{text-decoration-color:var(--text)}
 main{max-width:1160px;margin:0 auto;padding:var(--gap) var(--gutter) calc(var(--section) * 2)}
 
 /* Surfaces: flat, one hairline, no shadow at rest */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:var(--pad);margin-bottom:var(--gap)}
-h1{font-size:var(--fs-title);line-height:1.3;font-weight:500;margin:0}
-h2{font-size:16px;line-height:24px;font-weight:500;margin:0 0 12px}
+.card{background:var(--surface);border:0;border-radius:var(--radius-card);padding:var(--pad);margin-bottom:var(--gap)}
+h1{font-family:var(--serif);font-size:var(--fs-title);line-height:1.2;font-weight:400;letter-spacing:-0.015em;margin:0}
+h2{font-family:var(--serif);font-size:20px;line-height:28px;font-weight:400;letter-spacing:-0.005em;margin:0 0 12px}
 .sub{color:var(--muted);margin:4px 0 0}
 .muted{color:var(--muted)}
 .num,td.r,.r{font-variant-numeric:tabular-nums}
@@ -53,7 +56,7 @@ th{color:var(--muted);font-weight:400;font-size:13px}
 tr:last-child td{border-bottom:0}
 .r{text-align:right}
 
-input,select,textarea{width:100%;height:36px;padding:0 10px;border:1px solid var(--control);border-radius:var(--radius-control);font:inherit;background:#fff;color:var(--text);transition:border-color 150ms var(--ease)}
+input,select,textarea{width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-control);font:inherit;background:#fff;color:var(--text);transition:border-color 150ms var(--ease)}
 textarea{height:auto;padding:8px 10px}
 input:focus,select:focus,textarea:focus{border-color:var(--text);outline:none}
 input[type=checkbox]{height:auto}
@@ -62,15 +65,15 @@ label{display:block;color:var(--muted);font-size:13px;margin-bottom:4px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 /* Buttons: one near-black primary, grey secondary; press feedback */
-button,.btn{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 16px;border-radius:var(--radius-control);border:0;
+button,.btn{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 20px;border-radius:var(--radius-pill);border:1px solid var(--accent);
   background:var(--accent);color:#fff;font:inherit;font-weight:500;cursor:pointer;text-decoration:none;white-space:nowrap;
   transition:background-color 150ms var(--ease),transform var(--spring-dur) var(--spring)}
 button:active,.btn:active{transform:scale(0.97);transition-duration:80ms,80ms}
-@media (hover:hover) and (pointer:fine){button:hover,.btn:hover{background:#333}}
+@media (hover:hover) and (pointer:fine){button:hover,.btn:hover{background:#33363b}}
 button:disabled{opacity:.4;cursor:not-allowed;transform:none}
-.btn.ghost,button.ghost{background:#e5e5e5;color:var(--text)}
-@media (hover:hover) and (pointer:fine){.btn.ghost:hover,button.ghost:hover{background:#dadada}}
-button.danger{background:transparent;color:var(--negative);padding:0 8px}
+.btn.ghost,button.ghost{background:transparent;color:var(--text);border-color:var(--text)}
+@media (hover:hover) and (pointer:fine){.btn.ghost:hover,button.ghost:hover{background:var(--raised)}}
+button.danger{background:transparent;color:var(--negative);border-color:transparent;padding:0 10px}
 @media (hover:hover) and (pointer:fine){button.danger:hover{background:#fbeaea}}
 .btn.small,button.small{height:28px;padding:0 10px;font-size:13px}
 
@@ -155,3 +158,19 @@ input.autofilled,select.autofilled{background:#f2f6fd;border-color:#9bb6e3}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+
+
+/* Steep: the one warm accent per page. Carries the page's finding, ink is sienna on peach. */
+.callout{background:var(--peach);color:var(--sienna);border-radius:var(--radius-card);padding:12px 20px;margin:12px 0 0;display:inline-block;max-width:100%}
+.callout a{color:var(--sienna);text-decoration-color:rgba(93,42,26,.35)}
+.callout.calm{background:var(--fog);color:var(--muted)}
+/* Strip and chart sit on mist; inner dividers are white so cards stay flat */
+.strip>div{box-shadow:-1px 0 0 var(--ground),0 -1px 0 var(--ground)!important}
+.tabs{border-bottom-color:var(--ground)}
+th,td{border-bottom-color:var(--ground)}
+.badge.sent::before{background:var(--sienna)}
+.lc text.on{fill:var(--sienna)}
+.ub{border-top-color:var(--ground)}
+/* Category and meta labels are typographic tags, not pills */
+.tag{color:var(--tag);font-size:14px}
+input.autofilled,select.autofilled{background:#fff6f0;border-color:#e9b99c}
