@@ -126,3 +126,25 @@ export const documents = pgTable("documents", {
   uploadedBy: text("uploaded_by").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [index("documents_tenant_idx").on(t.tenantId)]);
+
+// Money spent for the work: coffee on site, taxi, parking, cables, tools.
+// billable = to be charged back to the client; invoiceId set once it is on an invoice.
+export const expenses = pgTable("expenses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
+  spentOn: date("spent_on").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull().default("other"),
+  vendor: text("vendor").notNull().default(""),
+  amountCents: integer("amount_cents").notNull(),          // gross, as on the receipt
+  vatRate: numeric("vat_rate", { precision: 5, scale: 2 }).notNull().default("0"),
+  currency: text("currency").notNull().default("EUR"),
+  paymentMethod: text("payment_method").notNull().default(""),
+  clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
+  billable: boolean("billable").notNull().default(false),
+  invoiceId: uuid("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+  receiptDocId: uuid("receipt_doc_id").references(() => documents.id, { onDelete: "set null" }),
+  notes: text("notes").notNull().default(""),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("expenses_tenant_date_idx").on(t.tenantId, t.spentOn)]);

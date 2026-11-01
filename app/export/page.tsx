@@ -7,6 +7,7 @@ const TYPES = [
   ["invoices", "Invoices", "One row per invoice: number, dates, client, VAT ID, net, tax, gross, paid, balance"],
   ["items", "Invoice lines", "Every line item with quantity, price, tax rate"],
   ["payments", "Payments", "Payments received, by payment date"],
+  ["expenses", "Expenses", "Everything you spent: date, category, gross, VAT, net, billable and which invoice charged it"],
   ["visits", "Site visits", "SVRs with visit date, hours, and which invoice billed them"],
   ["clients", "Clients", "Client list with pricing"],
 ] as const;

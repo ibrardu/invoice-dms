@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { and, asc, eq } from "drizzle-orm";
-import { db, clients, invoices, invoiceItems } from "@/lib/db";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import { db, clients, invoices, invoiceItems, expenses } from "@/lib/db";
 import { requireTenant } from "@/lib/auth";
 import { getCompany, listSeries } from "@/lib/actions";
 import InvoiceForm from "../InvoiceForm";
@@ -24,7 +24,11 @@ export default async function NewInvoice({ searchParams }: { searchParams: Promi
     }
   }
   const preload = !id && svrs ? await visitsFromDocs(svrs.split(","), client ?? "") : null;
+  const openExpenses = id ? [] : (await db.select({ id: expenses.id, clientId: expenses.clientId, spentOn: expenses.spentOn, description: expenses.description,
+    amountCents: expenses.amountCents, currency: expenses.currency }).from(expenses)
+    .where(and(eq(expenses.tenantId, tenantId), eq(expenses.billable, true), isNull(expenses.invoiceId))).orderBy(asc(expenses.spentOn)))
+    .filter((e) => e.currency === company.currency);
   if (!list.length) return <div className="card">Add a client first. <Link href="/clients">Go to clients</Link></div>;
   return <><h1>{initial ? "Edit invoice" : "New invoice"}</h1>
-    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} preload={preload} presetClient={client} /></>;
+    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} preload={preload} presetClient={client} openExpenses={openExpenses} /></>;
 }

@@ -4,7 +4,7 @@ import { requireTenant } from "@/lib/auth";
 import { uploadDocument, deleteDocument } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
-const CATS = ["general", "svr", "contract", "receipt", "invoice", "quote", "correspondence", "other"];
+const CATS = ["general", "svr", "receipt", "contract", "receipt", "invoice", "quote", "correspondence", "other"];
 
 export default async function Documents({ searchParams }: { searchParams: Promise<{ q?: string; cat?: string }> }) {
   const { tenantId } = await requireTenant();

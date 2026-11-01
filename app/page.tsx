@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, desc, eq, gte, isNull, lt, ne, sql } from "drizzle-orm";
-import { db, invoices, clients, documents, payments } from "@/lib/db";
+import { db, invoices, clients, documents, payments, expenses } from "@/lib/db";
 import { requireTenant } from "@/lib/auth";
 import { getCompany } from "@/lib/actions";
 import { markOverdue } from "@/lib/overdue";
@@ -9,7 +9,7 @@ import LineChart from "./LineChart";
 
 export const dynamic = "force-dynamic";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const METRICS = [["invoiced", "Invoiced"], ["paid", "Paid"], ["hours", "Hours on site"]] as const;
+const METRICS = [["invoiced", "Invoiced"], ["paid", "Paid"], ["expenses", "Expenses"], ["hours", "Hours on site"]] as const;
 type Metric = (typeof METRICS)[number][0];
 
 const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
@@ -32,6 +32,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const invT = and(eq(invoices.tenantId, tenantId), ne(invoices.status, "cancelled"), clientId ? eq(invoices.clientId, clientId) : undefined);
   const payT = and(eq(payments.tenantId, tenantId), clientId ? eq(invoices.clientId, clientId) : undefined);
   const svrT = and(eq(documents.tenantId, tenantId), eq(documents.category, "svr"), clientId ? eq(documents.clientId, clientId) : undefined);
+  const expT = and(eq(expenses.tenantId, tenantId), eq(expenses.currency, cur), clientId ? eq(expenses.clientId, clientId) : undefined);
   const paidOn = sql<number>`coalesce((select sum(p.amount_cents) from payments p where p.invoice_id = ${invoices.id}),0)::int`;
 
   const monthly = async (y: number) => {
@@ -40,11 +41,13 @@ export default async function Overview({ searchParams }: { searchParams: Promise
       .from(invoices).where(and(invT, gte(invoices.issueDate, a), lt(invoices.issueDate, b))).groupBy(sql`1`);
     if (metric === "paid") return db.select({ m: sql<number>`extract(month from ${payments.paidOn})::int`, v: sql<number>`sum(${payments.amountCents})::int` })
       .from(payments).innerJoin(invoices, eq(invoices.id, payments.invoiceId)).where(and(payT, gte(payments.paidOn, a), lt(payments.paidOn, b))).groupBy(sql`1`);
+    if (metric === "expenses") return db.select({ m: sql<number>`extract(month from ${expenses.spentOn})::int`, v: sql<number>`sum(${expenses.amountCents})::int` })
+      .from(expenses).where(and(expT, gte(expenses.spentOn, a), lt(expenses.spentOn, b))).groupBy(sql`1`);
     return db.select({ m: sql<number>`extract(month from ${documents.visitDate})::int`, v: sql<number>`coalesce(sum(${documents.visitHours}),0)::float` })
       .from(documents).where(and(svrT, gte(documents.visitDate, a), lt(documents.visitDate, b))).groupBy(sql`1`);
   };
 
-  const [clientList, years, open, [paidMonth], [paidYear], [paidPrevYtd], curRows, prevRows, [totInv], [totPaid], [totHours], unbilled, byClient] = await Promise.all([
+  const [clientList, years, open, [paidMonth], [paidYear], [paidPrevYtd], curRows, prevRows, [totInv], [totPaid], [totExp], [totHours], unbilled, byClient] = await Promise.all([
     db.select({ id: clients.id, name: clients.name }).from(clients).where(eq(clients.tenantId, tenantId)).orderBy(asc(clients.name)),
     db.selectDistinct({ y: sql<number>`extract(year from ${invoices.issueDate})::int` }).from(invoices).where(eq(invoices.tenantId, tenantId)),
     db.select({ id: invoices.id, number: invoices.number, status: invoices.status, due: invoices.dueDate, total: invoices.totalCents, paid: paidOn, client: clients.name })
@@ -60,6 +63,8 @@ export default async function Overview({ searchParams }: { searchParams: Promise
       .where(and(invT, gte(invoices.issueDate, range(year)[0]), lt(invoices.issueDate, range(year)[1]))),
     db.select({ v: sql<number>`coalesce(sum(${payments.amountCents}),0)::int` }).from(payments).innerJoin(invoices, eq(invoices.id, payments.invoiceId))
       .where(and(payT, gte(payments.paidOn, range(year)[0]), lt(payments.paidOn, range(year)[1]))),
+    db.select({ v: sql<number>`coalesce(sum(${expenses.amountCents}),0)::int` }).from(expenses)
+      .where(and(expT, gte(expenses.spentOn, range(year)[0]), lt(expenses.spentOn, range(year)[1]))),
     db.select({ v: sql<number>`coalesce(sum(${documents.visitHours}),0)::float` }).from(documents)
       .where(and(svrT, gte(documents.visitDate, range(year)[0]), lt(documents.visitDate, range(year)[1]))),
     db.select({ id: documents.id, date: documents.visitDate, hours: documents.visitHours, clientId: documents.clientId, client: clients.name, title: documents.title })
@@ -93,7 +98,8 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const sum = (a: (number | null)[], to: number) => a.slice(0, to + 1).reduce<number>((s, v) => s + (v ?? 0), 0);
   const delta = (a: number, b: number) => {
     const d = a - b;
-    return <span className={d > 0 ? "up" : d < 0 ? "down" : "muted"}>{d === 0 ? "no change" : `${d > 0 ? "+" : "−"}${f(Math.abs(d))}`}</span>;
+    const good = metric === "expenses" ? d < 0 : d > 0;   // spending more is not good news
+    return <span className={d === 0 ? "muted" : good ? "up" : "down"}>{d === 0 ? "no change" : `${d > 0 ? "+" : "−"}${f(Math.abs(d))}`}</span>;
   };
 
   const groups = Object.values(unbilled.reduce<Record<string, { clientId: string | null; client: string; rows: typeof unbilled }>>((g, d) => {
@@ -134,7 +140,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
       <section className="card">
         <div className="tabs" role="tablist">
           {METRICS.map(([k, label]) => {
-            const total = k === "invoiced" ? fmt(totInv.v, cur) : k === "paid" ? fmt(totPaid.v, cur) : `${Math.round(Number(totHours.v) * 10) / 10} h`;
+            const total = k === "invoiced" ? fmt(totInv.v, cur) : k === "paid" ? fmt(totPaid.v, cur) : k === "expenses" ? fmt(totExp.v, cur) : `${Math.round(Number(totHours.v) * 10) / 10} h`;
             return <Link key={k} role="tab" aria-selected={k === metric} href={`/?${qs({ metric: k })}`} className={k === metric ? "on" : ""}>
               <span>{label}</span><b>{total}</b></Link>;
           })}
