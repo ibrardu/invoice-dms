@@ -8,23 +8,25 @@ import { priceVisit, hoursBetween, type Mode, type Rates } from "@/lib/pricing";
 type Item = { description: string; quantity: number; unitPrice: number; taxRate: number; visitKey?: string };
 type RVisit = Visit & { mode: Mode; rates: Rates; tax: number };
 type Series = { id: string; prefix: string; mode: string; isDefault: boolean };
-type Props = { series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
+type Preload = { visits: Visit[]; lines: Item[]; supplyDates: string; mode: Mode; rates: Rates; tax: number } | null;
+type Props = { preload?: Preload; presetClient?: string; series: Series[]; clients: { id: string; name: string; seriesId: string | null }[]; currency: string; defaultTax: number;
   initial?: { id: string; number: string; clientId: string; issueDate: string; dueDate: string; notes: string; supplyDates: string; items: Item[] } };
 
-export default function InvoiceForm({ clients, currency, defaultTax, initial, series }: Props) {
+export default function InvoiceForm({ clients, currency, defaultTax, initial, series, preload, presetClient }: Props) {
   const defSeries = series.find((x) => x.isDefault)?.id ?? series[0]?.id ?? "";
   const blank = (): Item => ({ description: "", quantity: 1, unitPrice: 0, taxRate: defaultTax });
-  const [items, setItems] = useState<Item[]>(initial?.items ?? [blank()]);
+  const [items, setItems] = useState<Item[]>(initial?.items ?? (preload?.lines.length ? preload.lines : [blank()]));
   const upd = (i: number, k: keyof Item, v: string) => setItems(items.map((it, j) => j === i ? { ...it, [k]: k === "description" ? v : Number(v) } : it));
   const f = (n: number) => new Intl.NumberFormat("en-IE", { style: "currency", currency }).format(n);
-  const [visits, setVisits] = useState<RVisit[]>([]);
+  const [visits, setVisits] = useState<RVisit[]>(preload ? preload.visits.map((v) => ({ ...v, mode: preload.mode, rates: preload.rates, tax: preload.tax })) : []);
   const [svrMsg, setSvrMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [clientId, setClientId] = useState(initial?.clientId ?? "");
+  const [clientId, setClientId] = useState(initial?.clientId ?? (presetClient && clients.some((c) => c.id === presetClient) ? presetClient : ""));
   const [issueDate, setIssueDate] = useState(initial?.issueDate ?? "");
-  const [supply, setSupply] = useState(initial?.supplyDates ?? "");
+  const [supply, setSupply] = useState(initial?.supplyDates ?? preload?.supplyDates ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [seriesId, setSeriesId] = useState(defSeries);
+  const presetSeries = clients.find((c) => c.id === presetClient)?.seriesId;
+  const [seriesId, setSeriesId] = useState(presetSeries && series.some((x) => x.id === presetSeries) ? presetSeries : defSeries);
   const [numberDate, setNumberDate] = useState("");
   const [manual, setManual] = useState("");
   const [preview, setPreview] = useState("");

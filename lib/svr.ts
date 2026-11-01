@@ -1,5 +1,5 @@
 "use server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { z } from "zod";
 import { extractText, getDocumentProxy } from "unpdf";
@@ -88,35 +88,61 @@ export async function extractSvr(f: FormData): Promise<
     visits.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 
     const mode = z.enum(["hourly", "half_full", "full_day", "task"]).catch((client?.pricingMode as "hourly") ?? "hourly").parse(f.get("mode"));
-    const rates: Rates = {
-      half: (client?.halfDayRateCents ?? 0) / 100, full: (client?.fullDayRateCents ?? 0) / 100,
-      halfMax: Number(client?.halfDayMaxHours ?? 4), task: (client?.taskRateCents ?? 0) / 100,
-      hourly: ((client?.hourlyRateCents || company.hourlyRateCents) ?? 0) / 100,
-      travel: ((client?.travelFlatCents || company.travelRateCents) ?? 0) / 100,
-    };
-    const travel = rates.travel;
-    const support: Line[] = [], extra: Line[] = [];
-    for (const v of visits) {
-      const { line, warnings } = priceVisit(v, mode, rates, tax, v.docId);
-      support.push(line); v.warnings.push(...warnings);
-      if (travel) extra.push({ description: `Travel ${dmy(v.date)}`.trim(), quantity: 1, unitPrice: travel, taxRate: tax });
-      v.expenses.forEach((x) => extra.push({ description: x.description, quantity: 1, unitPrice: x.amount ?? 0, taxRate: tax }));
-      v.materials.forEach((m) => extra.push({ description: m.description, quantity: m.quantity || 1, unitPrice: m.unitPrice ?? 0, taxRate: tax }));
-    }
-
-    // "June 9, 16, 18 & 19 2026" style, like the existing invoices.
-    const ds = [...new Set(visits.map((v) => v.date).filter((d): d is string => !!d))].map((d) => new Date(d + "T00:00:00Z"));
-    let supplyDates = "";
-    if (ds.length) {
-      const sameMonth = ds.every((d) => d.getUTCMonth() === ds[0].getUTCMonth() && d.getUTCFullYear() === ds[0].getUTCFullYear());
-      const month = (d: Date) => d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
-      const days = ds.map((d) => d.getUTCDate());
-      supplyDates = sameMonth
-        ? `${month(ds[0])} ${days.length > 1 ? days.slice(0, -1).join(", ") + " & " + days.at(-1) : days[0]}, ${ds[0].getUTCFullYear()}`
-        : ds.map((d) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })).join(", ");
-    }
-    return { ok: true, visits, lines: [...support, ...extra], supplyDates, mode, rates, tax };
+    const { rates, lines, supplyDates } = priceVisits(visits, client, company, mode, tax);
+    return { ok: true, visits, lines, supplyDates, mode, rates, tax };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not read SVR" };
   }
+}
+
+type ClientRow = typeof clients.$inferSelect;
+type CompanyRow = Awaited<ReturnType<typeof getCompany>>;
+
+/** Prices visits with the client's rates and builds the "June 9, 16 & 18, 2026" supply text. */
+function priceVisits(visits: Visit[], client: ClientRow | undefined, company: CompanyRow, mode: Mode, tax: number) {
+  const rates: Rates = {
+    half: (client?.halfDayRateCents ?? 0) / 100, full: (client?.fullDayRateCents ?? 0) / 100,
+    halfMax: Number(client?.halfDayMaxHours ?? 4), task: (client?.taskRateCents ?? 0) / 100,
+    hourly: ((client?.hourlyRateCents || company.hourlyRateCents) ?? 0) / 100,
+    travel: ((client?.travelFlatCents || company.travelRateCents) ?? 0) / 100,
+  };
+  const support: Line[] = [], extra: Line[] = [];
+  for (const v of visits) {
+    const { line, warnings } = priceVisit(v, mode, rates, tax, v.docId);
+    support.push(line); v.warnings.push(...warnings);
+    if (rates.travel) extra.push({ description: `Travel ${dmy(v.date)}`.trim(), quantity: 1, unitPrice: rates.travel, taxRate: tax });
+    v.expenses.forEach((x) => extra.push({ description: x.description, quantity: 1, unitPrice: x.amount ?? 0, taxRate: tax }));
+    v.materials.forEach((m) => extra.push({ description: m.description, quantity: m.quantity || 1, unitPrice: m.unitPrice ?? 0, taxRate: tax }));
+  }
+  const ds = [...new Set(visits.map((v) => v.date).filter((d): d is string => !!d))].sort().map((d) => new Date(d + "T00:00:00Z"));
+  let supplyDates = "";
+  if (ds.length) {
+    const sameMonth = ds.every((d) => d.getUTCMonth() === ds[0].getUTCMonth() && d.getUTCFullYear() === ds[0].getUTCFullYear());
+    const month = (d: Date) => d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+    const days = ds.map((d) => d.getUTCDate());
+    supplyDates = sameMonth
+      ? `${month(ds[0])} ${days.length > 1 ? days.slice(0, -1).join(", ") + " & " + days.at(-1) : days[0]}, ${ds[0].getUTCFullYear()}`
+      : ds.map((d) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })).join(", ");
+  }
+  return { rates, lines: [...support, ...extra], supplyDates };
+}
+
+/** Builds invoice lines from SVRs already stored in Documents (no re-upload, no Llama call). */
+export async function visitsFromDocs(ids: string[], clientId: string) {
+  const { tenantId } = await requireTenant();
+  const clean = ids.filter((i) => /^[0-9a-f-]{36}$/.test(i)).slice(0, 30);
+  if (!clean.length) return null;
+  const company = await getCompany(tenantId);
+  const [client] = clientId ? await db.select().from(clients).where(and(eq(clients.id, clientId), eq(clients.tenantId, tenantId))) : [];
+  const docs = await db.select().from(documents)
+    .where(and(eq(documents.tenantId, tenantId), eq(documents.category, "svr"), isNull(documents.invoiceId), inArray(documents.id, clean)));
+  const visits: Visit[] = docs.map((d) => ({
+    date: d.visitDate, start: null, end: null, hours: Number(d.visitHours ?? 0),
+    ticket: d.tags.split(",")[0]?.trim() || null, site: null, endCustomer: null, engineer: null, summary: d.title,
+    expenses: [], materials: [], fileName: d.fileName, docId: d.id, warnings: [],
+  })).sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+  const mode = ((client?.pricingMode as Mode) ?? "hourly");
+  const tax = Number(company.defaultTaxRate) || 0;
+  const { rates, lines, supplyDates } = priceVisits(visits, client, company, mode, tax);
+  return { visits, lines, supplyDates, mode, rates, tax };
 }

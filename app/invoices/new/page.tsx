@@ -4,12 +4,13 @@ import { db, clients, invoices, invoiceItems } from "@/lib/db";
 import { requireTenant } from "@/lib/auth";
 import { getCompany, listSeries } from "@/lib/actions";
 import InvoiceForm from "../InvoiceForm";
+import { visitsFromDocs } from "@/lib/svr";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewInvoice({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+export default async function NewInvoice({ searchParams }: { searchParams: Promise<{ id?: string; svrs?: string; client?: string }> }) {
   const { tenantId } = await requireTenant();
-  const { id } = await searchParams;
+  const { id, svrs, client } = await searchParams;
   const [company, list] = await Promise.all([getCompany(tenantId),
     db.select({ id: clients.id, name: clients.name, seriesId: clients.defaultSeriesId }).from(clients).where(eq(clients.tenantId, tenantId)).orderBy(asc(clients.name))]);
   const series = (await listSeries(tenantId)).map((x) => ({ id: x.id, prefix: x.prefix, mode: x.mode, isDefault: x.isDefault }));
@@ -22,7 +23,8 @@ export default async function NewInvoice({ searchParams }: { searchParams: Promi
         items: items.map((it) => ({ description: it.description, quantity: Number(it.quantity), unitPrice: it.unitPriceCents / 100, taxRate: Number(it.taxRate) })) };
     }
   }
+  const preload = !id && svrs ? await visitsFromDocs(svrs.split(","), client ?? "") : null;
   if (!list.length) return <div className="card">Add a client first. <Link href="/clients">Go to clients</Link></div>;
   return <><h1>{initial ? "Edit invoice" : "New invoice"}</h1>
-    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} /></>;
+    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} preload={preload} presetClient={client} /></>;
 }

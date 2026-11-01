@@ -1,35 +1,37 @@
 import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import { auth } from "@/lib/auth/server";
 import { signOutAction } from "./sign-in/actions";
-import Link from "next/link";
+import { getCompany } from "@/lib/actions";
+import NavLinks from "./NavLinks";
 import "./globals.css";
 
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Invoice DMS", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Invoices", robots: { index: false, follow: false } };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = await auth.getSession();
   const user = session?.user;
+  const company = user ? await getCompany("main").catch(() => null) : null;
+  const name = company?.name || "Invoices";
+  const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   return (
-      <html lang="en">
-        <body>
-          {user && (
-            <header className="top no-print">
-              <span className="brand">Invoice DMS</span>
-              <nav>
-                <Link href="/">Dashboard</Link>
-                <Link href="/invoices">Invoices</Link>
-                <Link href="/clients">Clients</Link>
-                <Link href="/documents">Documents</Link>
-                <Link href="/export">Export</Link>
-                <Link href="/settings">Settings</Link>
-              </nav>
-              <span className="muted">{user.email}</span>
-              <form action={signOutAction}><button className="ghost">Sign out</button></form>
-            </header>
-          )}
-          <main>{children}</main>
-        </body>
-      </html>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+      <body>
+        {user && (
+          <header className="top no-print">
+            <Link href="/" className="brand"><span className="mark">{initials}</span><span className="name">{name}</span></Link>
+            <NavLinks />
+            <span className="who">{user.email}</span>
+            <form action={signOutAction}><button className="ghost small">Sign out</button></form>
+          </header>
+        )}
+        <main>{children}</main>
+      </body>
+    </html>
   );
 }
