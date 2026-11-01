@@ -7,6 +7,7 @@ import { connectBank, disconnectBank, syncBank, confirmMatch, confirmAllExact, i
 import { fmt } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Bank" };
 const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
 const COUNTRIES = [["DE", "Germany"], ["BE", "Belgium"], ["NL", "Netherlands"], ["AT", "Austria"], ["FR", "France"], ["ES", "Spain"], ["IT", "Italy"], ["FI", "Finland"]];
 

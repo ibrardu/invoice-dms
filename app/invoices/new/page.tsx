@@ -8,6 +8,7 @@ import { visitsFromDocs } from "@/lib/svr";
 import { llamaCloudEnabled } from "@/lib/llamacloud";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "New invoice" };
 
 export default async function NewInvoice({ searchParams }: { searchParams: Promise<{ id?: string; svrs?: string; client?: string }> }) {
   const { tenantId } = await requireTenant();

@@ -188,3 +188,28 @@ input.autofilled,select.autofilled{background:#fff6f0;border-color:#e9b99c}
 .xp li.failed{color:var(--negative)}.xp li.failed .xp-mini i{background:var(--negative)}
 .xp li.reading .xp-stage{color:var(--sienna)}
 @media (max-width:520px){.xp li{grid-template-columns:minmax(0,1fr) 60px}.xp-stage{grid-column:1/-1;grid-row:2}}
+
+/* Finishing: skip link, headings that wrap well, page-level states, loading skeletons */
+.skip{position:absolute;left:16px;top:-48px;z-index:10;background:var(--text);color:#fff;padding:8px 16px;border-radius:var(--radius-pill);text-decoration:none;transition:top 150ms var(--ease)}
+.skip:focus{top:8px}
+main:focus{outline:none}
+h1,h2,h3{text-wrap:balance}p,li{text-wrap:pretty}
+.state{max-width:560px;margin:var(--section) auto;display:grid;gap:12px}
+.sk i{display:block;height:14px;border-radius:8px;background:linear-gradient(90deg,var(--surface) 0%,var(--raised) 50%,var(--surface) 100%);background-size:200% 100%;animation:sk 1.4s ease-in-out infinite}
+.sk-title{display:flex;flex-direction:column;gap:12px;margin:var(--pad) 0 var(--section)}
+.sk-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--ground);border-radius:var(--radius-card);overflow:hidden;margin-bottom:var(--gap)}
+.sk-strip>div{background:var(--surface);padding:var(--pad);display:grid;gap:10px}
+.sk-strip i{background:var(--raised)}
+.sk-card{background:var(--surface);border-radius:var(--radius-card);padding:var(--pad);display:grid;gap:12px}
+.sk-card i{background:var(--raised)}
+.sk-line{display:flex;justify-content:space-between;gap:16px;padding:6px 0}
+.sk-row{display:grid;gap:6px}
+@keyframes sk{0%{opacity:1}50%{opacity:.55}100%{opacity:1}}
+/* Getting started */
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:step}
+.steps li{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--ground)}
+.steps li:first-child{border-top:0}
+.steps li::before{counter-increment:step;content:counter(step);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--ground);font-size:13px}
+.steps li.done::before{content:"✓";background:var(--text);color:#fff}
+.steps li.done span{color:var(--muted)}
+.empty{padding:var(--pad) 0;color:var(--muted)}

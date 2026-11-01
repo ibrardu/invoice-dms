@@ -6,10 +6,10 @@ import { renderInvoicePdf } from "./invoice-pdf-doc";
 export async function invoicePdf(tenantId: string, id: string) {
   const { inv, client, items, company, payments } = await loadInvoice(tenantId, id);
   const balance = inv.totalCents - payments.reduce((a, p) => a + p.amountCents, 0);
-  const qr = company.showPaymentQr && balance > 0 && inv.status !== "cancelled"
+  const qr = company.showPaymentQr && balance > 0 && inv.kind === "invoice" && inv.status !== "cancelled"
     ? await epcQrPng({ name: company.accountHolder || company.name, iban: company.iban, bic: company.bic, amountCents: balance, currency: inv.currency, reference: `Invoice ${inv.number}` })
     : null;
   const buffer = await renderInvoicePdf({ inv, client, items, company, balance, qr });
-  return { buffer, inv, client, company, balance, fileName: `Invoice-${inv.number.replace(/[^\w-]+/g, "")}.pdf` };
+  return { buffer, inv, client, company, balance, fileName: `${inv.kind === "credit_note" ? "CreditNote" : "Invoice"}-${inv.number.replace(/[^\w-]+/g, "")}.pdf` };
 }
 

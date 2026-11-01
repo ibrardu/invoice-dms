@@ -55,7 +55,7 @@ async function openInvoices(tenantId: string) {
   const paid = sql<number>`coalesce((select sum(p.amount_cents) from payments p where p.invoice_id = ${invoices.id}),0)::int`;
   const rows = await db.select({ id: invoices.id, number: invoices.number, total: invoices.totalCents, paid, currency: invoices.currency, client: clients.name })
     .from(invoices).innerJoin(clients, eq(clients.id, invoices.clientId))
-    .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.status, ["sent", "overdue", "draft"])));
+    .where(and(eq(invoices.tenantId, tenantId), eq(invoices.kind, "invoice"), inArray(invoices.status, ["sent", "overdue", "draft"])));
   return rows.map((r) => ({ id: r.id, number: r.number, balanceCents: r.total - r.paid, currency: r.currency, client: r.client }));
 }
 
@@ -78,7 +78,7 @@ async function record(tenantId: string, txId: string, invoiceId: string) {
     method: "Bank transfer", reference: [t.counterparty, t.reference].filter(Boolean).join(" · ").slice(0, 200) }).returning({ id: payments.id });
   await db.update(bankTransactions).set({ status: "matched", invoiceId, paymentId: p.id }).where(eq(bankTransactions.id, txId));
   const [{ paid }] = await db.select({ paid: sql<number>`coalesce(sum(${payments.amountCents}),0)::int` }).from(payments).where(eq(payments.invoiceId, invoiceId));
-  if (paid >= inv.totalCents) await db.update(invoices).set({ status: "paid", updatedAt: new Date() }).where(eq(invoices.id, invoiceId));
+  if (paid >= inv.totalCents) await db.update(invoices).set({ status: "paid", updatedAt: new Date(), lockedAt: inv.lockedAt ?? new Date() }).where(eq(invoices.id, invoiceId));
   return true;
 }
 

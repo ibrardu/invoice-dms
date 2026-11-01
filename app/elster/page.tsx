@@ -7,6 +7,7 @@ import { categoryLabel } from "@/lib/expense-categories";
 import { today } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "ELSTER" };
 const eur = (c: number) => (c / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const whole = (c: number) => Math.trunc(c / 100).toLocaleString("de-DE");   // UStVA bases are entered in full euros
 

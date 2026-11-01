@@ -32,7 +32,7 @@ export default async function PrintInvoice({ params }: { params: Promise<{ id: s
         <header className="inv-head">
           {company.logoUrl ? <img src={company.logoUrl} alt="" className="inv-logo" /> : <div className="inv-name">{company.name.toUpperCase()}</div>}
           <div className="r">
-            <div className="inv-no">Invoice {inv.number}</div>
+            <div className="inv-no">{inv.kind === "credit_note" ? "Credit note" : "Invoice"} {inv.number}</div>
             <div className="inv-small">Issued on {long(inv.issueDate)}</div>
           </div>
         </header>

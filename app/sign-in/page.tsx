@@ -1,3 +1,4 @@
+export const metadata = { title: "Sign in" };
 import SignInForm from "./SignInForm";
 
 export default async function SignIn({ searchParams }: { searchParams: Promise<{ error?: string }> }) {

@@ -94,6 +94,10 @@ export const invoices = pgTable("invoices", {
   notes: text("notes").notNull().default(""),
   createdBy: text("created_by").notNull(),
   submissionKey: text("submission_key"),
+  // GoBD: invoice | credit_note. A credit note reverses creditFor. Locked once it leaves draft.
+  kind: text("kind").notNull().default("invoice"),
+  creditFor: uuid("credit_for"),
+  lockedAt: timestamp("locked_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [

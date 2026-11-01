@@ -4,6 +4,7 @@ import { requireTenant } from "@/lib/auth";
 import { saveClient, deleteClient, listSeries } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Clients" };
 
 export default async function Clients({ searchParams }: { searchParams: Promise<{ edit?: string }> }) {
   const { tenantId } = await requireTenant();
@@ -49,12 +50,13 @@ export default async function Clients({ searchParams }: { searchParams: Promise<
         </div>
         <p><button>{e ? "Save changes" : "Add client"}</button></p>
       </form>
+      {list.length === 0 ? <p className="empty">No clients yet. Add the first one above; its pricing is used when invoices are built from site visit reports.</p> :
       <div className="card">
         <table><thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>VAT</th><th></th></tr></thead>
           <tbody>{list.map((c) => <tr key={c.id}><td>{c.name}</td><td>{c.contactName}</td><td>{c.email}</td><td>{c.taxId}</td>
             <td className="r"><div className="row" style={{ justifyContent: "flex-end" }}><a className="btn ghost" href={`/clients?edit=${c.id}`}>Edit</a>
               <form action={deleteClient}><input type="hidden" name="id" value={c.id} /><button className="danger">Delete</button></form></div></td></tr>)}</tbody></table>
-      </div>
+      </div>}
     </>
   );
 }

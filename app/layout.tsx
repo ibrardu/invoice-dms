@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 const serif = Source_Serif_4({ subsets: ["latin"], weight: ["400"], variable: "--font-serif" });
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Invoices", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { default: "Overview · Invoices", template: "%s · Invoices" }, description: "Invoices, expenses and site visit reports", robots: { index: false, follow: false } };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = await auth.getSession();
@@ -23,6 +23,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable} ${serif.variable}`}>
       <body>
+        <a href="#content" className="skip">Skip to content</a>
         {user && (
           <header className="top no-print">
             <Link href="/" className="brand"><span className="mark">{initials}</span><span className="name">{name}</span></Link>
@@ -31,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <form action={signOutAction}><button className="ghost small">Sign out</button></form>
           </header>
         )}
-        <main>{children}</main>
+        <main id="content" tabIndex={-1}>{children}</main>
       </body>
     </html>
   );
