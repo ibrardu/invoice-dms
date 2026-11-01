@@ -40,6 +40,8 @@ export async function saveClient(f: FormData) {
   if (!name) throw new Error("Client name is required");
   const data = { name, contactName: s(f, "contactName"), email: s(f, "email"), phone: s(f, "phone"),
     address: s(f, "address"), taxId: s(f, "taxId"), notes: s(f, "notes"),
+    pricingMode: z.enum(["hourly", "half_full", "full_day", "task"]).catch("half_full").parse(s(f, "pricingMode")),
+    taskRateCents: toCents(s(f, "taskRate")),
     halfDayRateCents: toCents(s(f, "halfDayRate")), fullDayRateCents: toCents(s(f, "fullDayRate")),
     halfDayMaxHours: String(Number(s(f, "halfDayMaxHours")) || 4), hourlyRateCents: toCents(s(f, "hourlyRate")),
     travelFlatCents: toCents(s(f, "travelFlat")) };

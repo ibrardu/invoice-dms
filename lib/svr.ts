@@ -90,20 +90,27 @@ export async function extractSvr(f: FormData): Promise<
     }));
     visits.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 
+    const mode = z.enum(["hourly", "half_full", "full_day", "task"]).catch((client?.pricingMode as "hourly") ?? "hourly").parse(f.get("mode"));
     const half = (client?.halfDayRateCents ?? 0) / 100, full = (client?.fullDayRateCents ?? 0) / 100;
     const halfMax = Number(client?.halfDayMaxHours ?? 4);
     const hourly = ((client?.hourlyRateCents || company.hourlyRateCents) ?? 0) / 100;
+    const task = (client?.taskRateCents ?? 0) / 100;
     const travel = ((client?.travelFlatCents || company.travelRateCents) ?? 0) / 100;
     const dmy = (d: string | null) => { const m = d?.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}.${m[2]}.${m[1]}` : ""; };
 
     const support: Line[] = [], extra: Line[] = [];
     for (const v of visits) {
-      const label = `Support ${dmy(v.date)}`.trim();
-      if (half || full) {
-        const useHalf = half && v.hours > 0 && v.hours <= halfMax;
-        support.push({ description: label, quantity: 1, unitPrice: useHalf ? half : (full || half), taxRate: tax });
+      const d = dmy(v.date);
+      if (mode === "hourly") {
+        support.push({ description: `Support per hour ${d}`.trim(), quantity: v.hours || 1, unitPrice: hourly, taxRate: tax });
+        if (!v.hours) v.warnings.push("hours unknown, quantity set to 1");
+      } else if (mode === "task") {
+        support.push({ description: `${v.ticket ? `Task ${v.ticket.split(",")[0].trim()}` : "Support task"} ${d}`.trim(), quantity: 1, unitPrice: task, taxRate: tax });
+      } else if (mode === "full_day") {
+        support.push({ description: `Support 1 day (${d})`, quantity: 1, unitPrice: full, taxRate: tax });
       } else {
-        support.push({ description: label, quantity: v.hours || 1, unitPrice: hourly, taxRate: tax });
+        const useHalf = half > 0 && v.hours > 0 && v.hours <= halfMax;
+        support.push({ description: `Support ${d}`.trim(), quantity: 1, unitPrice: useHalf ? half : (full || half), taxRate: tax });
       }
       if (travel) extra.push({ description: `Travel ${dmy(v.date)}`.trim(), quantity: 1, unitPrice: travel, taxRate: tax });
       v.expenses.forEach((x) => extra.push({ description: x.description, quantity: 1, unitPrice: x.amount ?? 0, taxRate: tax }));

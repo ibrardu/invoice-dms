@@ -1,5 +1,5 @@
 {
-  "id": "d5aaf4fc-95af-4555-bf26-ff73c5cca6fc",
+  "id": "561c3f73-cefe-4fd8-80e7-177c32843443",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -68,6 +68,20 @@
           "primaryKey": false,
           "notNull": true,
           "default": "''"
+        },
+        "pricing_mode": {
+          "name": "pricing_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'half_full'"
+        },
+        "task_rate_cents": {
+          "name": "task_rate_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "half_day_rate_cents": {
           "name": "half_day_rate_cents",

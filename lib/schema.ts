@@ -35,6 +35,9 @@ export const clients = pgTable("clients", {
   taxId: text("tax_id").notNull().default(""),
   notes: text("notes").notNull().default(""),
   // Pricing for SVR-generated lines. 0 = fall back to company hourly rate.
+  // hourly | half_full (half-day / full-day by hours) | full_day (fixed per day) | task (fixed per task/visit)
+  pricingMode: text("pricing_mode").notNull().default("half_full"),
+  taskRateCents: integer("task_rate_cents").notNull().default(0),
   halfDayRateCents: integer("half_day_rate_cents").notNull().default(0),
   fullDayRateCents: integer("full_day_rate_cents").notNull().default(0),
   halfDayMaxHours: numeric("half_day_max_hours", { precision: 4, scale: 2 }).notNull().default("4"),

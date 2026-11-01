@@ -43,8 +43,11 @@ export default function InvoiceForm({ clients, currency, defaultTax, initial }: 
     <>
     {!initial && <form action={importSvr} className="card">
       <h2>Optional: fill from Site Visit Reports</h2>
-      <p className="muted">Select the client below first, then upload one or more SVRs (PDF). One line is added per visit, priced with the client&apos;s half/full-day or hourly rate. Skip if there is no SVR.</p>
-      <div className="row"><input type="file" name="svr" multiple accept=".pdf,.txt,text/plain,application/pdf" style={{ flex: 1, width: "auto" }} required />
+      <p className="muted">Select the client below first, then upload one or more SVRs (PDF). One line is added per visit, priced by the client&apos;s default mode or the one you pick here. Skip if there is no SVR.</p>
+      <div className="row"><select name="mode" defaultValue="" style={{ width: 240 }}>
+          <option value="">Client default pricing</option><option value="half_full">Half / full day</option>
+          <option value="full_day">Fixed full day</option><option value="hourly">Hourly</option><option value="task">Per task</option></select>
+        <input type="file" name="svr" multiple accept=".pdf,.txt,text/plain,application/pdf" style={{ flex: 1, width: "auto" }} required />
         <button disabled={busy}>{busy ? "Reading..." : "Extract"}</button></div>
       {svrMsg && <p>{svrMsg}</p>}
       {visits.length > 0 && <table><thead><tr><th>Date</th><th>On site</th><th>Hours</th><th>Ticket</th><th>Site / customer</th><th>Notes</th></tr></thead>

@@ -25,8 +25,14 @@ export default async function Clients({ searchParams }: { searchParams: Promise<
           <div><label>Notes</label><textarea name="notes" rows={3} defaultValue={e?.notes} /></div>
         </div>
         <h2 style={{ marginTop: 16 }}>Pricing for site visits</h2>
-        <p className="muted">Used when generating lines from SVRs. Visits up to the half-day hours use the half-day rate, longer visits the full-day rate. Leave day rates at 0 to bill hourly.</p>
+        <p className="muted">Default way to price lines generated from SVRs. You can switch mode per import on the invoice page.</p>
         <div className="grid">
+          <div><label>Default pricing mode</label><select name="pricingMode" defaultValue={e?.pricingMode ?? "half_full"}>
+            <option value="half_full">Half / full day (by hours on site)</option>
+            <option value="full_day">Fixed full-day rate</option>
+            <option value="hourly">Hourly</option>
+            <option value="task">Fixed price per task / visit</option></select></div>
+          <div><label>Task rate</label><input name="taskRate" type="number" step="0.01" defaultValue={((e?.taskRateCents ?? 0) / 100).toFixed(2)} /></div>
           <div><label>Half-day rate</label><input name="halfDayRate" type="number" step="0.01" defaultValue={((e?.halfDayRateCents ?? 0) / 100).toFixed(2)} /></div>
           <div><label>Half-day up to (hours)</label><input name="halfDayMaxHours" type="number" step="0.25" defaultValue={e?.halfDayMaxHours ?? "4"} /></div>
           <div><label>Full-day rate</label><input name="fullDayRate" type="number" step="0.01" defaultValue={((e?.fullDayRateCents ?? 0) / 100).toFixed(2)} /></div>
