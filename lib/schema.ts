@@ -30,6 +30,18 @@ export const companies = pgTable("companies", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Invoice number series. mode "sequence": PREFIX + running number (e.g. #61927).
+// mode "date": PREFIX + DDMMYYYY of the chosen date (e.g. TSM18092026); duplicates get -2, -3...
+export const invoiceSeries = pgTable("invoice_series", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: text("tenant_id").notNull(),
+  prefix: text("prefix").notNull(),
+  mode: text("mode").notNull().default("sequence"),
+  nextNumber: integer("next_number").notNull().default(1),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("series_tenant_prefix_uq").on(t.tenantId, t.prefix)]);
+
 export const clients = pgTable("clients", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: text("tenant_id").notNull(),
@@ -42,6 +54,7 @@ export const clients = pgTable("clients", {
   notes: text("notes").notNull().default(""),
   // Pricing for SVR-generated lines. 0 = fall back to company hourly rate.
   // hourly | half_full (half-day / full-day by hours) | full_day (fixed per day) | task (fixed per task/visit)
+  defaultSeriesId: uuid("default_series_id"),
   pricingMode: text("pricing_mode").notNull().default("half_full"),
   taskRateCents: integer("task_rate_cents").notNull().default(0),
   halfDayRateCents: integer("half_day_rate_cents").notNull().default(0),
