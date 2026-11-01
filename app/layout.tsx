@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Invoice DMS", robots: { index: false
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
   return (
-    <ClerkProvider>
+    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
       <html lang="en">
         <body>
           {userId && (
