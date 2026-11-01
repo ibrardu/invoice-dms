@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import Link from "next/link";
 import { auth } from "@/lib/auth/server";
 import { signOutAction } from "./sign-in/actions";
@@ -9,6 +9,7 @@ import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+const serif = Source_Serif_4({ subsets: ["latin"], weight: ["400"], variable: "--font-serif" });
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Invoices", robots: { index: false, follow: false } };
@@ -20,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const name = company?.name || "Invoices";
   const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${serif.variable}`}>
       <body>
         {user && (
           <header className="top no-print">

@@ -50,7 +50,7 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
     <div className="stagger">
       <div className="ov-title">
         <div><h1>Expenses, {period}</h1>
-          <p className="sub">{unbilled.n ? `${m(unbilled.v)} in ${unbilled.n} billable expense${unbilled.n > 1 ? "s" : ""} not invoiced yet` : "Every billable expense is invoiced"}</p></div>
+          <p className={unbilled.n ? "callout" : "callout calm"}>{unbilled.n ? `${m(unbilled.v)} in ${unbilled.n} billable expense${unbilled.n > 1 ? "s" : ""} not invoiced yet` : "Every billable expense is invoiced"}</p></div>
         <form className="row">
           <select name="year" defaultValue={year} aria-label="Year" style={{ width: 96 }}>{Array.from({ length: 5 }, (_, i) => Number(now.slice(0, 4)) - i).map((y) => <option key={y}>{y}</option>)}</select>
           <select name="month" defaultValue={month} aria-label="Month" style={{ width: 130 }}><option value="0">Whole year</option>
@@ -90,7 +90,7 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
           <Animate as="tbody">{rows.map(({ e, client, invoice }) => <tr key={e.id}>
             <td className="num">{dmy(e.spentOn)}</td>
             <td>{e.description}{e.vendor && <div className="muted">{e.vendor}</div>}</td>
-            <td className="muted">{categoryLabel(e.category)}</td>
+            <td className="tag">{categoryLabel(e.category)}</td>
             <td>{client ?? <span className="muted">–</span>}</td>
             <td>{e.invoiceId ? <Link href={`/invoices/${e.invoiceId}`}>{invoice}</Link> : e.billable ? <span className="badge sent">To invoice</span> : <span className="muted">Own cost</span>}</td>
             <td className="r money">{m(e.amountCents, e.currency)}</td>

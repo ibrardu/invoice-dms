@@ -37,3 +37,4 @@
   .inv-items tfoot{display:table-row-group}
   .inv-items tr,.inv-pay,.inv-note,.inv-qr{break-inside:avoid}
 }
+.inv h1,.inv h2,.inv h3,.inv h4{font-family:inherit;letter-spacing:0}

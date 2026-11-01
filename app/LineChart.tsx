@@ -22,16 +22,16 @@ export default function LineChart({ labels, current, previous, highlight, format
       <figcaption className="lc-legend"><span><i className="ink" />{currentLabel}</span><span><i className="grey" />{previousLabel}</span></figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${currentLabel} by month compared with ${previousLabel}`}>
         {ticks.map((t) => <g key={t}>
-          <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#f0f0f0" />
+          <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#e4e4e6" />
           <text x={L - 10} y={y(t) + 4} textAnchor="end">{format(t)}</text></g>)}
-        <path d={path(previous)} fill="none" stroke="#c4c4c4" strokeWidth="2" strokeLinejoin="round" />
-        <path d={path(current)} fill="none" stroke="#141414" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d={path(previous)} fill="none" stroke="#c9c9ce" strokeWidth="2" strokeLinejoin="round" />
+        <path d={path(current)} fill="none" stroke="#17191c" strokeWidth="2.5" strokeLinejoin="round" />
         {labels.map((l, i) => <g key={l}>
           <text x={x(i)} y={H - 8} textAnchor="middle" className={i === highlight ? "on" : ""}>{l}</text>
           <rect x={x(i) - (W - L) / labels.length / 2} y={T} width={(W - L) / labels.length} height={H - T - B} fill="transparent">
             <title>{`${l}\n${currentLabel}: ${current[i] == null ? "–" : format(current[i]!)}\n${previousLabel}: ${format(previous[i])}`}</title></rect>
         </g>)}
-        {hv != null && <circle cx={x(highlight)} cy={y(hv)} r="5" fill="#1d5fbf" stroke="#fff" strokeWidth="2" pointerEvents="none" />}
+        {hv != null && <circle cx={x(highlight)} cy={y(hv)} r="5" fill="#5d2a1a" stroke="#fff" strokeWidth="2" pointerEvents="none" />}
       </svg>
     </figure>
   );
