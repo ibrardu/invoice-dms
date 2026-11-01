@@ -114,3 +114,9 @@ button.danger:hover{background:#fbeaea}
 .ub li{display:grid;grid-template-columns:110px 60px 1fr;gap:8px}
 .ub li a{font-size:13px;justify-self:end}
 @media (max-width:720px){.strip b{font-size:22px;line-height:28px}.strip>div{padding:16px;min-width:0}.lc{overflow-x:auto}.lc svg{min-width:640px}.strip{grid-template-columns:1fr 1fr}.strip>div:nth-child(3){border-left:0}.strip>div:nth-child(n+3){border-top:1px solid var(--border)}.tabs{gap:20px;overflow-x:auto}}
+
+/* Form filling: field errors and autofilled fields awaiting review */
+.field-error{display:block;color:var(--negative);font-size:13px;margin-top:4px}
+input.invalid,select.invalid,textarea.invalid{border-color:var(--negative)}
+input.autofilled,select.autofilled{background:#f2f6fd;border-color:#9bb6e3}
+.check{display:flex;gap:8px;align-items:center;color:var(--text);margin-top:12px}.check input{width:auto;height:auto}

@@ -80,10 +80,12 @@ export const invoices = pgTable("invoices", {
   totalCents: integer("total_cents").notNull().default(0),
   notes: text("notes").notNull().default(""),
   createdBy: text("created_by").notNull(),
+  submissionKey: text("submission_key"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [
   index("invoices_tenant_idx").on(t.tenantId),
+  uniqueIndex("invoices_submission_uq").on(t.tenantId, t.submissionKey),
   uniqueIndex("invoices_tenant_number_uq").on(t.tenantId, t.number),
 ]);
 
@@ -146,5 +148,7 @@ export const expenses = pgTable("expenses", {
   receiptDocId: uuid("receipt_doc_id").references(() => documents.id, { onDelete: "set null" }),
   notes: text("notes").notNull().default(""),
   createdBy: text("created_by").notNull(),
+  submissionKey: text("submission_key"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (t) => [index("expenses_tenant_date_idx").on(t.tenantId, t.spentOn)]);
+}, (t) => [index("expenses_tenant_date_idx").on(t.tenantId, t.spentOn),
+  uniqueIndex("expenses_submission_uq").on(t.tenantId, t.submissionKey)]);

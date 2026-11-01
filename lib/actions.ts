@@ -67,6 +67,12 @@ const itemSchema = z.object({ description: z.string().min(1), quantity: z.coerce
 
 export async function saveInvoice(f: FormData) {
   const { tenantId, userId } = await requireTenant();
+  // Idempotency: a repeated submit of the same new-invoice form opens the invoice it already created.
+  const submissionKey = /^[\w-]{8,64}$/.test(s(f, "submissionKey")) ? s(f, "submissionKey") : null;
+  if (!s(f, "id") && submissionKey) {
+    const [done] = await db.select({ id: invoices.id }).from(invoices).where(and(eq(invoices.tenantId, tenantId), eq(invoices.submissionKey, submissionKey)));
+    if (done) redirect(`/invoices/${done.id}`);
+  }
   const items = z.array(itemSchema).min(1).parse(JSON.parse(s(f, "items") || "[]"));
   const clientId = s(f, "clientId");
   const [client] = await db.select({ id: clients.id }).from(clients).where(and(eq(clients.id, clientId), eq(clients.tenantId, tenantId)));
@@ -94,7 +100,7 @@ export async function saveInvoice(f: FormData) {
     await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
   } else {
     const number = await allocateNumber(tenantId, s(f, "seriesId"), s(f, "numberDate") || issueDate, s(f, "manualNumber"));
-    [{ id }] = await db.insert(invoices).values({ ...base, tenantId, number, createdBy: userId }).returning({ id: invoices.id });
+    [{ id }] = await db.insert(invoices).values({ ...base, tenantId, number, createdBy: userId, submissionKey }).returning({ id: invoices.id });
   }
   if (s(f, "id") && s(f, "manualNumber")) {
     const want = s(f, "manualNumber");
