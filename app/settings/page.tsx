@@ -24,6 +24,18 @@ export default async function Settings() {
           <div><label>Bank / payment details</label><textarea name="bankDetails" rows={4} defaultValue={c.bankDetails} /></div>
           <div><label>Invoice footer</label><textarea name="footerNote" rows={4} defaultValue={c.footerNote} /></div>
         </div>
+        <h2 style={{ marginTop: 16 }}>Tax and ELSTER</h2>
+        <p className="muted">Optional. Shows the figures for your VAT pre-return (Umsatzsteuer-Voranmeldung) and EÜR to copy into Mein ELSTER, and prints the right VAT note on invoices. Ask your tax adviser if unsure which options apply.</p>
+        <label className="check"><input type="checkbox" name="elsterEnabled" defaultChecked={c.elsterEnabled} /> Show the ELSTER page</label>
+        <div className="grid" style={{ marginTop: 12 }}>
+          <div><label>VAT status</label><select name="vatStatus" defaultValue={c.vatStatus}>
+            <option value="regular">VAT registered (Regelbesteuerung)</option><option value="kleinunternehmer">Small business, no VAT (§ 19 UStG)</option></select></div>
+          <div><label>VAT counted when</label><select name="taxBasis" defaultValue={c.taxBasis}>
+            <option value="ist">Payment received (Ist-Versteuerung)</option><option value="soll">Invoice issued (Soll-Versteuerung)</option></select></div>
+          <div><label>Pre-return period</label><select name="vatPeriod" defaultValue={c.vatPeriod}>
+            <option value="quarterly">Quarterly</option><option value="monthly">Monthly</option></select></div>
+          {field("taxNumber", "Tax number (Steuernummer)")}
+        </div>
         <h2 style={{ marginTop: 16 }}>Email templates</h2>
         <p className="muted">Placeholders: {"{number} {company} {client} {contact} {total} {balance} {due} {days}"}</p>
         <div className="grid">

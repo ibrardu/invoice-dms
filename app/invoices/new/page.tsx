@@ -13,7 +13,7 @@ export default async function NewInvoice({ searchParams }: { searchParams: Promi
   const { tenantId } = await requireTenant();
   const { id, svrs, client } = await searchParams;
   const [company, list] = await Promise.all([getCompany(tenantId),
-    db.select({ id: clients.id, name: clients.name, seriesId: clients.defaultSeriesId }).from(clients).where(eq(clients.tenantId, tenantId)).orderBy(asc(clients.name))]);
+    db.select({ id: clients.id, name: clients.name, seriesId: clients.defaultSeriesId, vatTreatment: clients.vatTreatment }).from(clients).where(eq(clients.tenantId, tenantId)).orderBy(asc(clients.name))]);
   const series = (await listSeries(tenantId)).map((x) => ({ id: x.id, prefix: x.prefix, mode: x.mode, isDefault: x.isDefault }));
   let initial;
   if (id) {
@@ -31,5 +31,5 @@ export default async function NewInvoice({ searchParams }: { searchParams: Promi
     .filter((e) => e.currency === company.currency);
   if (!list.length) return <div className="card">Add a client first. <Link href="/clients">Go to clients</Link></div>;
   return <><h1>{initial ? "Edit invoice" : "New invoice"}</h1>
-    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} preload={preload} presetClient={client} openExpenses={openExpenses} stepwise={llamaCloudEnabled()} /></>;
+    <InvoiceForm clients={list} currency={company.currency} defaultTax={Number(company.defaultTaxRate)} initial={initial} series={series} preload={preload} presetClient={client} openExpenses={openExpenses} stepwise={llamaCloudEnabled()} noVat={company.vatStatus === "kleinunternehmer"} /></>;
 }

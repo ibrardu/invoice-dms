@@ -2,6 +2,7 @@ import { requireTenant } from "@/lib/auth";
 import { loadInvoice } from "@/lib/invoice-data";
 import PrintButton from "./PrintButton";
 import { epcQrSvg } from "@/lib/epc-qr";
+import { vatNote } from "@/lib/tax";
 import "./invoice.css";
 
 export const dynamic = "force-dynamic";
@@ -69,10 +70,8 @@ export default async function PrintInvoice({ params }: { params: Promise<{ id: s
         </section>
 
         <div className="inv-pay">
-          {(inv.notes || company.footerNote) && <section className="inv-note">
-            <b>Invoice note</b>
-            <div className="pre">{[inv.notes, company.footerNote].filter(Boolean).join("\n")}</div>
-          </section>}
+          {(() => { const note = [vatNote(company.vatStatus, client.vatTreatment, company.taxId, client.taxId), inv.notes, company.footerNote].filter(Boolean).join("\n");
+            return note ? <section className="inv-note"><b>Invoice note</b><div className="pre">{note}</div></section> : null; })()}
           {(qr || company.paymentLink) && <section className="inv-qr">
             {qr && <div className="qr" dangerouslySetInnerHTML={{ __html: qr }} />}
             <div>{qr && <>Scan to pay {m(balance)}<br />with your banking app</>}
