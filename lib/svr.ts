@@ -6,6 +6,7 @@ import { extractText, getDocumentProxy } from "unpdf";
 import { db, documents, clients } from "./db";
 import { requireTenant } from "./auth";
 import { getCompany } from "./actions";
+import { priceVisit, hoursBetween, dmy, type Mode, type Rates, type Line } from "./pricing";
 
 const n = z.coerce.number().catch(0);
 const str = z.string().nullable().catch(null);
@@ -16,7 +17,6 @@ const visitSchema = z.object({
   materials: z.array(z.object({ description: z.string(), quantity: z.coerce.number().catch(1), unitPrice: z.coerce.number().nullable().catch(null) })).catch([]),
 });
 export type Visit = z.infer<typeof visitSchema> & { fileName: string; docId: string; warnings: string[] };
-export type Line = { description: string; quantity: number; unitPrice: number; taxRate: number };
 
 const PROMPT = `You read field engineer Site Visit Reports (SVR). Layouts vary (forms, spreadsheets exported to PDF, post-visit templates).
 Return ONLY a JSON object:
@@ -39,7 +39,6 @@ async function fileToText(file: File) {
   return new TextDecoder().decode(buf);
 }
 
-const toMin = (t: string | null) => { const m = t?.match(/^(\d{1,2})[:.](\d{2})/); return m ? +m[1] * 60 + +m[2] : null; };
 
 async function llama(text: string) {
   const { LLAMA_API_URL, LLAMA_API_KEY, LLAMA_MODEL } = process.env;
@@ -57,7 +56,7 @@ async function llama(text: string) {
 
 /** Reads one or more SVRs, stores them in the DMS and returns priced invoice lines. */
 export async function extractSvr(f: FormData): Promise<
-  { ok: true; visits: Visit[]; lines: Line[]; supplyDates: string } | { ok: false; error: string }> {
+  { ok: true; visits: Visit[]; lines: Line[]; supplyDates: string; mode: Mode; rates: Rates; tax: number } | { ok: false; error: string }> {
   try {
     const { tenantId, userId } = await requireTenant();
     if (!process.env.LLAMA_API_URL || !process.env.LLAMA_MODEL) return { ok: false, error: "Llama API is not configured (LLAMA_API_URL, LLAMA_MODEL)." };
@@ -75,11 +74,9 @@ export async function extractSvr(f: FormData): Promise<
       if (text.trim().length < 20) throw new Error(`${file.name}: no readable text (scanned PDF?)`);
       const v = await llama(text);
       // Recompute hours from times; don't trust model arithmetic.
-      const s = toMin(v.start), e = toMin(v.end);
-      if (s != null && e != null && e > s) v.hours = Math.round((e - s) / 60 * 100) / 100;
+      const h = hoursBetween(v.start, v.end);
+      v.hours = h || (v.start && v.end ? v.hours : 0);
       const warnings: string[] = [];
-      if (!v.date) warnings.push("visit date not found");
-      if (!v.end) warnings.push("end time missing, check hours / rate");
       const safe = file.name.replace(/[^\w.\-]+/g, "_").slice(-120);
       const blob = await put(`${tenantId}/${crypto.randomUUID()}-${safe}`, file, { access: "private", contentType: file.type || "application/octet-stream" });
       const [doc] = await db.insert(documents).values({ tenantId, uploadedBy: userId, clientId: client?.id ?? null,
@@ -91,27 +88,17 @@ export async function extractSvr(f: FormData): Promise<
     visits.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 
     const mode = z.enum(["hourly", "half_full", "full_day", "task"]).catch((client?.pricingMode as "hourly") ?? "hourly").parse(f.get("mode"));
-    const half = (client?.halfDayRateCents ?? 0) / 100, full = (client?.fullDayRateCents ?? 0) / 100;
-    const halfMax = Number(client?.halfDayMaxHours ?? 4);
-    const hourly = ((client?.hourlyRateCents || company.hourlyRateCents) ?? 0) / 100;
-    const task = (client?.taskRateCents ?? 0) / 100;
-    const travel = ((client?.travelFlatCents || company.travelRateCents) ?? 0) / 100;
-    const dmy = (d: string | null) => { const m = d?.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}.${m[2]}.${m[1]}` : ""; };
-
+    const rates: Rates = {
+      half: (client?.halfDayRateCents ?? 0) / 100, full: (client?.fullDayRateCents ?? 0) / 100,
+      halfMax: Number(client?.halfDayMaxHours ?? 4), task: (client?.taskRateCents ?? 0) / 100,
+      hourly: ((client?.hourlyRateCents || company.hourlyRateCents) ?? 0) / 100,
+      travel: ((client?.travelFlatCents || company.travelRateCents) ?? 0) / 100,
+    };
+    const travel = rates.travel;
     const support: Line[] = [], extra: Line[] = [];
     for (const v of visits) {
-      const d = dmy(v.date);
-      if (mode === "hourly") {
-        support.push({ description: `Support per hour ${d}`.trim(), quantity: v.hours || 1, unitPrice: hourly, taxRate: tax });
-        if (!v.hours) v.warnings.push("hours unknown, quantity set to 1");
-      } else if (mode === "task") {
-        support.push({ description: `${v.ticket ? `Task ${v.ticket.split(",")[0].trim()}` : "Support task"} ${d}`.trim(), quantity: 1, unitPrice: task, taxRate: tax });
-      } else if (mode === "full_day") {
-        support.push({ description: `Support 1 day (${d})`, quantity: 1, unitPrice: full, taxRate: tax });
-      } else {
-        const useHalf = half > 0 && v.hours > 0 && v.hours <= halfMax;
-        support.push({ description: `Support ${d}`.trim(), quantity: 1, unitPrice: useHalf ? half : (full || half), taxRate: tax });
-      }
+      const { line, warnings } = priceVisit(v, mode, rates, tax, v.docId);
+      support.push(line); v.warnings.push(...warnings);
       if (travel) extra.push({ description: `Travel ${dmy(v.date)}`.trim(), quantity: 1, unitPrice: travel, taxRate: tax });
       v.expenses.forEach((x) => extra.push({ description: x.description, quantity: 1, unitPrice: x.amount ?? 0, taxRate: tax }));
       v.materials.forEach((m) => extra.push({ description: m.description, quantity: m.quantity || 1, unitPrice: m.unitPrice ?? 0, taxRate: tax }));
@@ -128,7 +115,7 @@ export async function extractSvr(f: FormData): Promise<
         ? `${month(ds[0])} ${days.length > 1 ? days.slice(0, -1).join(", ") + " & " + days.at(-1) : days[0]}, ${ds[0].getUTCFullYear()}`
         : ds.map((d) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })).join(", ");
     }
-    return { ok: true, visits, lines: [...support, ...extra], supplyDates };
+    return { ok: true, visits, lines: [...support, ...extra], supplyDates, mode, rates, tax };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not read SVR" };
   }
