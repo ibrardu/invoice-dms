@@ -2,8 +2,8 @@
 import { useActionState, useState } from "react";
 import { signInAction } from "./actions";
 
-export default function SignInForm({ notice, signup }: { notice?: string; signup: boolean }) {
-  const [mode, setMode] = useState<"in" | "up">("in");
+export default function SignInForm({ notice, signup, start = "in" }: { notice?: string; signup: boolean; start?: "in" | "up" }) {
+  const [mode, setMode] = useState<"in" | "up">(signup ? start : "in");
   const [error, action, pending] = useActionState(signInAction, null);
   return (
     <form action={action} className="card" style={{ width: 360 }}>

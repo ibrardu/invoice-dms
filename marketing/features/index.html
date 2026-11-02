@@ -1,0 +1,232 @@
+<!doctype html>
+<!-- Feldbuch feature loops (HyperFrames compositions). Six 4-second loops, 960x720, 30 fps.
+     ?f=<id> shows one composition; render all with: node marketing/features/render.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Feldbuch feature loops</title>
+<style>
+@font-face{font-family:'Geist';font-style:normal;font-weight:400;src:url('../film/assets/fonts/Geist-400.woff2') format('woff2')}
+@font-face{font-family:'Geist';font-style:normal;font-weight:500;src:url('../film/assets/fonts/Geist-500.woff2') format('woff2')}
+@font-face{font-family:'Source Serif 4';font-style:italic;font-weight:400;src:url('../film/assets/fonts/SourceSerif4-400i.woff2') format('woff2')}
+@font-face{font-family:'Source Serif 4';font-style:normal;font-weight:400;src:url('../film/assets/fonts/SourceSerif4-400.woff2') format('woff2')}
+  html,body{margin:0;background:#f2f2f3}
+  .comp{display:none;position:relative;width:960px;height:720px;overflow:hidden;background:#f2f2f3;color:#17191c;font-family:'Geist',sans-serif;
+    --ink:#17191c;--muted:#777b86;--tag:#979799;--mist:#f2f2f3;--line:#e4e4e6;--peach:#fbe1d1;--sienna:#5d2a1a;--ok:#2e7d32}
+  .comp.on{display:block}
+  .comp *{box-sizing:border-box}
+  .card{position:absolute;background:#fff;border-radius:24px;box-shadow:0 0 0 1px rgba(4,23,43,.05),0 24px 30px -10px rgba(0,0,0,.12),0 10px 12px -8px rgba(0,0,0,.1)}
+  .serif{font-family:'Source Serif 4',serif;font-weight:400;letter-spacing:-.01em}
+  .lbl{font-size:22px;color:var(--tag)}
+  .val{font-size:30px}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* 1 receipts */
+  #receipt{left:70px;top:70px;width:330px;height:560px;padding:32px 30px;transform:rotate(-3deg);font-family:'Geist',monospace;font-size:21px;line-height:1.6;color:#333}
+  #receipt .c{text-align:center}
+  #receipt hr{border:0;border-top:2px dashed #ccc;margin:14px 0}
+  #receipt .r{display:flex;justify-content:space-between}
+  #scan{position:absolute;left:0;right:0;top:0;height:6px;background:linear-gradient(90deg,transparent,rgba(93,42,26,.65),transparent);box-shadow:0 0 24px rgba(93,42,26,.45)}
+  #form{left:460px;top:110px;width:430px;padding:30px}
+  .fld{margin-bottom:22px}
+  .fld .box{margin-top:8px;height:58px;border-radius:14px;border:2px solid var(--line);display:flex;align-items:center;padding:0 18px;font-size:28px;position:relative;overflow:hidden}
+  .fld .box b{font-weight:400;opacity:0}
+  .fld .box i{position:absolute;inset:0;background:#fff6f0;border-radius:12px;opacity:0}
+
+  /* 2 vat */
+  #seg{left:80px;top:70px;width:800px;height:80px;padding:8px;display:flex;gap:8px;border-radius:999px}
+  #seg span{flex:1;display:flex;align-items:center;justify-content:center;font-size:26px;border-radius:999px;color:var(--muted);position:relative;z-index:1}
+  #segPill{position:absolute;top:8px;left:8px;width:256px;height:64px;border-radius:999px;background:var(--ink)}
+  #vinv{left:80px;top:190px;width:800px;height:460px;padding:36px 40px}
+  #vinv .row{display:flex;justify-content:space-between;font-size:28px;padding:14px 0;border-bottom:2px solid var(--line)}
+  #note{margin-top:28px;background:#f5f5f5;border-radius:16px;padding:22px 26px;height:150px;position:relative}
+  #note b{display:block;font-size:22px;margin-bottom:10px}
+  .nt{position:absolute;left:26px;right:26px;top:62px;font-size:23px;line-height:1.35;color:#333;opacity:0}
+
+  /* 3 elster */
+  #kz{left:80px;top:80px;width:800px;padding:34px 40px}
+  #kz h3{margin:0 0 20px;font-size:34px}
+  .kzr{display:grid;grid-template-columns:90px 1fr 200px;align-items:center;font-size:27px;padding:16px 0;border-bottom:2px solid var(--line)}
+  .kzr b{font-weight:500}
+  .kzr .v{text-align:right}
+  #pay{margin-top:24px;display:flex;justify-content:space-between;align-items:center;background:var(--peach);color:var(--sienna);border-radius:18px;padding:20px 24px;font-size:30px}
+
+  /* 4 bank */
+  #tx{left:80px;top:90px;width:800px;padding:26px 32px;display:flex;justify-content:space-between;align-items:center}
+  #tx .who{font-size:28px}#tx .ref{font-size:22px;color:var(--muted);margin-top:6px}
+  #tx .amt{font-size:34px;color:var(--ok)}
+  #link{position:absolute;left:478px;top:225px;width:4px;height:150px;background:var(--sienna);transform-origin:top;border-radius:2px}
+  #binv{left:80px;top:390px;width:800px;padding:26px 32px;display:flex;justify-content:space-between;align-items:center}
+  #binv .no{font-size:30px}#binv .cl{font-size:22px;color:var(--muted);margin-top:6px}
+  #badge{font-size:24px;border-radius:999px;padding:8px 20px;background:var(--mist);color:var(--muted);min-width:150px;text-align:center}
+  #reason{position:absolute;left:520px;top:280px;font-size:22px;color:var(--sienna)}
+
+  /* 5 lock */
+  #linv{left:80px;top:80px;width:520px;height:360px;padding:30px 34px}
+  #linv .t{font-size:34px}#linv .s{font-size:22px;color:var(--muted);margin-top:8px}
+  #editBtn{position:absolute;left:34px;bottom:32px;font-size:24px;border:2px solid var(--ink);border-radius:999px;padding:10px 26px}
+  #lockIc{position:absolute;right:34px;top:30px;width:64px;height:64px}
+  #cancelBtn{position:absolute;left:34px;bottom:32px;font-size:24px;color:#b42318;border:2px solid #b42318;border-radius:999px;padding:10px 26px;opacity:0}
+  #cn{left:360px;top:330px;width:520px;height:300px;padding:30px 34px}
+  #cn .t{font-size:34px}#cn .s{font-size:22px;color:var(--muted);margin-top:8px}
+  #cn .a{position:absolute;right:34px;bottom:30px;font-size:34px}
+
+  /* 6 numbering */
+  #numCard{left:120px;top:150px;width:720px;height:420px;padding:44px}
+  #numCard .lbl{font-size:24px}
+  #win{margin-top:26px;height:120px;overflow:hidden;position:relative}
+  #reel{position:absolute;left:0;top:0}
+  #reel div{height:120px;display:flex;align-items:center;font-size:92px;letter-spacing:-.02em}
+  #pfx{margin-top:34px;display:flex;gap:14px}
+  #pfx span{font-size:24px;border-radius:999px;padding:8px 20px;background:var(--mist);color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- 1. Receipts -->
+<div class="comp" id="receipts" data-composition-id="receipts" data-duration="4" data-width="960" data-height="720">
+  <div class="card" id="receipt">
+    <div class="c"><b>TAXI HAMBURG</b><br>Kfz HH-TX 2041</div><hr>
+    <div class="r"><span>Datum</span><span>19.06.2026</span></div>
+    <div class="r"><span>Fahrt</span><span>Warehouse</span></div>
+    <div class="r"><span>Netto</span><span>10,56</span></div>
+    <div class="r"><span>MwSt 7 %</span><span>0,74</span></div><hr>
+    <div class="r"><b>SUMME EUR</b><b>11,30</b></div>
+    <div class="r"><span>Karte</span><span>****4417</span></div>
+    <div id="scan"></div>
+  </div>
+  <div class="card" id="form">
+    <div class="fld"><span class="lbl">Date</span><div class="box"><i></i><b id="v1" class="num">19.06.2026</b></div></div>
+    <div class="fld"><span class="lbl">Amount incl. VAT</span><div class="box"><i></i><b id="v2" class="num">11.30</b></div></div>
+    <div class="fld"><span class="lbl">VAT</span><div class="box"><i></i><b id="v3">7 %</b></div></div>
+    <div class="fld" style="margin-bottom:0"><span class="lbl">Shop</span><div class="box"><i></i><b id="v4">Taxi Hamburg</b></div></div>
+  </div>
+</div>
+
+<!-- 2. VAT notes -->
+<div class="comp" id="vat" data-composition-id="vat" data-duration="4.5" data-width="960" data-height="720">
+  <div class="card" id="seg"><div id="segPill"></div><span id="g1">Germany</span><span id="g2">EU business</span><span id="g3">Outside EU</span></div>
+  <div class="card" id="vinv">
+    <div class="row"><span>Support 19.06.2026</span><span class="num">€ 230.00</span></div>
+    <div class="row"><span>VAT</span><span class="num" id="vatv">€ 43.70</span></div>
+    <div id="note"><b>Invoice note</b>
+      <span class="nt" id="n1">Please reference your invoice number in the payment details.</span>
+      <span class="nt" id="n2">Steuerschuldnerschaft des Leistungsempfängers (§ 13b UStG). Reverse charge: VAT is due from the recipient.</span>
+      <span class="nt" id="n3">Nicht im Inland steuerbare Leistung (§ 3a Abs. 2 UStG). Not taxable in Germany.</span></div>
+  </div>
+</div>
+
+<!-- 3. ELSTER -->
+<div class="comp" id="elster" data-composition-id="elster" data-duration="4" data-width="960" data-height="720">
+  <div class="card" id="kz">
+    <h3 class="serif">Umsatzsteuer-Voranmeldung · Q3</h3>
+    <div class="kzr"><b>81</b><span>Sales at 19 %</span><span class="v num" id="k81">0</span></div>
+    <div class="kzr"><b>45</b><span>Not taxable in Germany</span><span class="v num" id="k45">0</span></div>
+    <div class="kzr"><b>66</b><span>Input VAT from expenses</span><span class="v num" id="k66">0,00</span></div>
+    <div id="pay"><span>Kz 83 · VAT to pay</span><b class="num" id="k83">€ 0,00</b></div>
+  </div>
+</div>
+
+<!-- 4. Bank matching -->
+<div class="comp" id="bank" data-composition-id="bank" data-duration="4" data-width="960" data-height="720">
+  <div class="card" id="tx"><div><div class="who">Nordlicht IT Services GmbH</div><div class="ref">Ref: Invoice 61926</div></div><span class="amt num">+ € 1,088.00</span></div>
+  <div id="link"></div><div id="reason">Number and amount match</div>
+  <div class="card" id="binv"><div><div class="no">Invoice #61926</div><div class="cl">Due 15.07.2026 · € 1,088.00</div></div><span id="badge">Open</span></div>
+</div>
+
+<!-- 5. GoBD locking -->
+<div class="comp" id="lock" data-composition-id="lock" data-duration="4.5" data-width="960" data-height="720">
+  <div class="card" id="linv"><div class="t serif">Invoice #61926</div><div class="s">Sent 22.06.2026</div>
+    <svg id="lockIc" viewBox="0 0 24 24" fill="none" stroke="#17191c" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path id="shackle" d="M8 11V7a4 4 0 0 1 8 0v0"/></svg>
+    <span id="editBtn">Edit</span><span id="cancelBtn">Cancel with credit note</span></div>
+  <div class="card" id="cn"><div class="t serif">Credit note CN-1</div><div class="s">Cancels invoice #61926</div><span class="a num">− € 1,088.00</span></div>
+</div>
+
+<!-- 6. Numbering -->
+<div class="comp" id="numbers" data-composition-id="numbers" data-duration="4.5" data-width="960" data-height="720">
+  <div class="card" id="numCard"><span class="lbl">Next invoice number</span>
+    <div id="win"><div id="reel" class="serif"><div>#61927</div><div>TSM18092026</div><div>IT31102026</div><div>#61927</div></div></div>
+    <div id="pfx"><span id="p1">Running · #</span><span id="p2">Date · TSM</span><span id="p3">Date · IT</span></div>
+  </div>
+</div>
+
+<script src="../film/assets/gsap.min.js"></script>
+<script>
+  // Each composition: one paused timeline, a seamless loop (the last frame equals the first).
+  const E = "power3.out", IO = "power2.inOut";
+  window.__timelines = {};
+  const T = (id) => (window.__timelines[id] = gsap.timeline({ paused: true }));
+
+  { const tl = T("receipts");
+    tl.fromTo("#scan", { top: 0, opacity: 0 }, { top: 556, opacity: 1, duration: 1.1, ease: "none" }, 0.2)
+      .to("#scan", { opacity: 0, duration: .2 }, 1.3);
+    ["#v1", "#v2", "#v3", "#v4"].forEach((v, i) => {
+      tl.to(`#form .fld:nth-child(${i + 1}) .box i`, { opacity: 1, duration: .25 }, 1.3 + i * .22)
+        .fromTo(v, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: .35, ease: E }, 1.3 + i * .22)
+        .to(`#form .fld:nth-child(${i + 1}) .box`, { borderColor: "#e9b99c", duration: .25 }, 1.3 + i * .22);
+    });
+    tl.to("#form .box b, #form .box i", { opacity: 0, duration: .3 }, 3.6)
+      .to("#form .box", { borderColor: "#e4e4e6", duration: .3 }, 3.6); }
+
+  { const tl = T("vat");
+    const go = (n, t, x, vat) => {
+      tl.to("#segPill", { x, duration: .45, ease: IO }, t)
+        .to("#seg span", { color: "#777b86", duration: .2 }, t).to(`#g${n}`, { color: "#ffffff", duration: .2 }, t + .15)
+        .to(".nt", { opacity: 0, y: -6, duration: .2 }, t).fromTo(`#n${n}`, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: .35, ease: E }, t + .2)
+        .set("#vatv", { textContent: vat }, t + .2);
+    };
+    tl.set("#g1", { color: "#ffffff" }, 0).set("#n1", { opacity: 1 }, 0);
+    go(2, 1.2, 264, "€ 0.00"); go(3, 2.5, 528, "€ 0.00"); go(1, 3.8, 0, "€ 43.70"); }
+
+  { const tl = T("elster");
+    const cnt = (sel, to, t, fmt) => { const o = { v: 0 }; tl.to(o, { v: to, duration: .9, ease: E, onUpdate: () => document.querySelector(sel).textContent = fmt(o.v) }, t); };
+    const de = (v, d = 0) => v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+    cnt("#k81", 1000, .3, (v) => de(Math.round(v)));
+    cnt("#k45", 1088, .6, (v) => de(Math.round(v)));
+    cnt("#k66", 19.70, .9, (v) => de(v, 2));
+    cnt("#k83", 170.30, 1.3, (v) => "€ " + de(v, 2));
+    tl.from("#pay", { scale: .96, duration: .4, ease: "back.out(2)" }, 1.3)
+      .to("#kz .v, #k83", { opacity: 0, duration: .25 }, 3.65)
+      .call(() => { ["#k81", "#k45"].forEach((s) => document.querySelector(s).textContent = "0"); document.querySelector("#k66").textContent = "0,00"; document.querySelector("#k83").textContent = "€ 0,00"; }, null, 3.95)
+      .set("#kz .v, #k83", { opacity: 1 }, 3.98); }
+
+  { const tl = T("bank");
+    tl.fromTo("#tx", { x: -120, opacity: 0 }, { x: 0, opacity: 1, duration: .6, ease: E }, .2)
+      .fromTo("#link", { scaleY: 0 }, { scaleY: 1, duration: .5, ease: IO }, 1.0)
+      .fromTo("#reason", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: .35 }, 1.25)
+      .set("#badge", { textContent: "Paid" }, 1.7)
+      .fromTo("#badge", { backgroundColor: "#f2f2f3", color: "#777b86" }, { backgroundColor: "#dcfae5", color: "#2e7d32", duration: .3 }, 1.7)
+      .from("#badge", { scale: .85, duration: .35, ease: "back.out(2.5)" }, 1.7)
+      .to("#tx, #link, #reason", { opacity: 0, duration: .35 }, 3.5)
+      .set("#badge", { textContent: "Open" }, 3.85).to("#badge", { backgroundColor: "#f2f2f3", color: "#777b86", duration: .15 }, 3.85); }
+
+  { const tl = T("lock");
+    tl.fromTo("#shackle", { attr: { d: "M8 11V7a4 4 0 0 1 8 0v0" } }, { attr: { d: "M8 11V7a4 4 0 0 1 8 0v4" }, duration: .3, ease: "power2.in" }, .6)
+      .fromTo("#lockIc", { y: -6, opacity: .35 }, { y: 0, opacity: 1, duration: .4, ease: "back.out(2)" }, .6)
+      .to("#editBtn", { opacity: 0, y: 8, duration: .25 }, .9)
+      .fromTo("#cancelBtn", { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: .3 }, 1.1)
+      .to("#cancelBtn", { scale: .96, duration: .1, yoyo: true, repeat: 1 }, 1.8)
+      .fromTo("#cn", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: .6, ease: E }, 2.0)
+      .to("#linv", { opacity: .55, duration: .4 }, 2.1)
+      .to("#cn", { opacity: 0, y: 40, duration: .35 }, 4.0)
+      .to("#linv", { opacity: 1, duration: .3 }, 4.0)
+      .to("#cancelBtn", { opacity: 0, duration: .2 }, 4.0).to("#editBtn", { opacity: 1, y: 0, duration: .2 }, 4.15)
+      .to("#lockIc", { opacity: .35, y: -6, duration: .2 }, 4.15)
+      .to("#shackle", { attr: { d: "M8 11V7a4 4 0 0 1 8 0v0" }, duration: .2 }, 4.15); }
+
+  { const tl = T("numbers");
+    const chip = (n, t) => tl.to("#pfx span", { backgroundColor: "#f2f2f3", color: "#777b86", duration: .2 }, t)
+      .to(`#p${n}`, { backgroundColor: "#fbe1d1", color: "#5d2a1a", duration: .2 }, t);
+    tl.set("#p1", { backgroundColor: "#fbe1d1", color: "#5d2a1a" }, 0);
+    tl.to("#reel", { y: -120, duration: .55, ease: IO }, 1.2); chip(2, 1.2);
+    tl.to("#reel", { y: -240, duration: .55, ease: IO }, 2.4); chip(3, 2.4);
+    tl.to("#reel", { y: -360, duration: .55, ease: IO }, 3.6); chip(1, 3.6);
+    tl.set("#reel", { y: 0 }, 4.45); }
+
+  // ?f=<id> shows one composition at time 0 (for previews and the renderer)
+  const f = new URLSearchParams(location.search).get("f") || "receipts";
+  document.getElementById(f).classList.add("on");
+  window.__timelines[f].seek(0, false);
+</script>
+</body>
+</html>

@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: { default: "Overview · Invoices", te
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = await auth.getSession();
   const user = session?.user;
-  const company = user ? await getCompany("main").catch(() => null) : null;
+  const company = user ? await getCompany(process.env.APP_MODE === "saas" ? user.id : "main").catch(() => null) : null;
   const name = company?.name || "Invoices";
   const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   return (

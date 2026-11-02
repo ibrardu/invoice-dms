@@ -6,6 +6,8 @@ import { getCompany } from "@/lib/actions";
 import { markOverdue } from "@/lib/overdue";
 import { fmt, today } from "@/lib/money";
 import LineChart from "./LineChart";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/server";
 import Animate from "./Animate";
 import { emailEnabled } from "@/lib/email";
 import { llamaCloudEnabled } from "@/lib/llamacloud";
@@ -20,6 +22,8 @@ const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`
 const days = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
 
 export default async function Overview({ searchParams }: { searchParams: Promise<{ year?: string; client?: string; metric?: string }> }) {
+  // The root is public (not covered by the proxy): signed-out visitors see the landing page, in both modes.
+  if (!(await auth.getSession()).data?.user) redirect("/welcome");
   const { tenantId } = await requireTenant();
   await markOverdue(tenantId);
   const sp = await searchParams;
