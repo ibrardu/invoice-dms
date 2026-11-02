@@ -4,6 +4,7 @@ import { PRODUCT } from "@/lib/mode";
 import HeroDemo from "./HeroDemo";
 import Reveal from "./Reveal";
 import FilmButton from "./FilmButton";
+import FeatureVideo from "./FeatureVideo";
 import "./landing.css";
 
 const serif = Source_Serif_4({ subsets: ["latin"], weight: ["400"], style: ["normal", "italic"], variable: "--lp-serif" });
@@ -26,13 +27,19 @@ const STEPS = [
       <div className="lp-frag-row muted"><span>Matches invoice #61926, amount and number</span><span className="lp-mini-btn">Confirm</span></div></div> },
 ];
 
-const FEATURES = [
-  ["Receipts in seconds", "Snap the coffee, the taxi, the cables. Date, amount, VAT and shop fill themselves in; billable ones go onto the next invoice."],
-  ["The right VAT note", "German client, EU business with reverse charge, or a client outside the EU: the legally required line is printed for you. Small business under § 19 too."],
-  ["ELSTER figures", "Your VAT pre-return Kennzahlen and EÜR for the month, quarter or year, ready to copy into Mein ELSTER. Ist or Soll."],
-  ["Bank matching", "Connect your account read-only through your bank's own login. Incoming payments are matched to invoices by number and amount."],
-  ["GoBD locking", "Sent invoices are locked. Corrections go through a credit note with its own number, exactly as German record-keeping rules expect."],
-  ["Your numbering", "#61927, TSM18092026, one prefix per client, running or by date. Your existing invoice numbers simply continue."],
+const FEATURES: { id: string; t: string; d: string; size: "lg" | "sm"; alt: string }[] = [
+  { id: "receipts", size: "lg", t: "Receipts in seconds", d: "Snap the coffee, the taxi, the cables. Date, amount, VAT and shop fill themselves in; billable ones go onto the next invoice.",
+    alt: "A taxi receipt is scanned and date, amount, VAT and shop fill the expense form" },
+  { id: "bank", size: "lg", t: "Payments that match themselves", d: "Connect your account read-only through your bank's own login. Incoming money finds its invoice by number and amount.",
+    alt: "An incoming bank payment links to invoice #61926, which turns paid" },
+  { id: "vat", size: "sm", t: "The right VAT note", d: "German client, EU business or outside the EU: the legally required line is printed for you.",
+    alt: "Switching the client between Germany, EU business and outside the EU changes the invoice's VAT note" },
+  { id: "elster", size: "sm", t: "ELSTER figures", d: "Your VAT pre-return Kennzahlen and EÜR, ready to copy into Mein ELSTER.",
+    alt: "The VAT pre-return rows fill in and the amount to pay counts up" },
+  { id: "lock", size: "sm", t: "GoBD locking", d: "Sent invoices lock. Corrections go through a credit note with its own number.",
+    alt: "A sent invoice locks and a credit note CN-1 cancels it" },
+  { id: "numbers", size: "sm", t: "Your numbering", d: "#61927, TSM18092026, IT31102026: running or by date, one prefix per client.",
+    alt: "The next invoice number rolls through three numbering formats" },
 ];
 
 const PLANS = [
@@ -93,8 +100,11 @@ export default function Welcome() {
       <section id="features" className="lp-band">
         <div className="lp-wrap">
           <h2 data-reveal>Everything a German freelancer <em>has to get right</em></h2>
-          <div className="lp-features">{FEATURES.map(([t, d], i) => (
-            <div key={t} data-reveal style={{ ["--i" as string]: i % 3 }}><h3>{t}</h3><p>{d}</p></div>))}</div>
+          <div className="lp-bento">{FEATURES.map((f, i) => (
+            <article key={f.id} className={`lp-feat lp-feat-${f.size}`} data-reveal style={{ ["--i" as string]: i % 2 }}>
+              <div className="lp-feat-media"><FeatureVideo id={f.id} label={f.alt} /></div>
+              <div className="lp-feat-text"><h3>{f.t}</h3><p>{f.d}</p></div>
+            </article>))}</div>
         </div>
       </section>
 
