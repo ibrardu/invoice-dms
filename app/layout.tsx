@@ -27,9 +27,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {user && (
           <header className="top no-print">
             <Link href="/" className="brand"><span className="mark">{initials}</span><span className="name">{name}</span></Link>
-            <NavLinks elster={!!company?.elsterEnabled} />
+            <NavLinks elster={!!company?.elsterEnabled} email={user.email} />
             <span className="who">{user.email}</span>
-            <form action={signOutAction}><button className="ghost small">Sign out</button></form>
+            <form action={signOutAction} className="top-out"><button className="ghost small">Sign out</button></form>
           </header>
         )}
         <main id="content" tabIndex={-1}>{children}</main>

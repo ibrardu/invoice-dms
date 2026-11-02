@@ -34,9 +34,9 @@ a:hover{text-decoration-color:var(--text)}
 .top{height:48px;max-width:1160px;margin:0 auto;padding:0 var(--gutter);display:flex;align-items:center;gap:24px}
 .brand{display:flex;align-items:center;gap:8px;font-weight:500;font-size:15px;text-decoration:none;white-space:nowrap;flex-shrink:0}
 .brand .mark{width:20px;height:20px;border-radius:4px;background:var(--text);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:600}
-.top nav{display:flex;gap:clamp(12px,1.1vw + 8px,20px);flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
-.top nav a{color:var(--muted);text-decoration:none;font-weight:500}
-.top nav a:hover,.top nav a[aria-current=page]{color:var(--text)}
+.top .desk-nav{display:flex;gap:clamp(12px,1.1vw + 8px,20px);flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.top .desk-nav a{color:var(--muted);text-decoration:none;font-weight:500}
+.top .desk-nav a:hover,.top .desk-nav a[aria-current=page]{color:var(--text)}
 .top .who{color:var(--muted);font-size:13px;white-space:nowrap}
 @media (max-width:1040px){.top .who{display:none}}
 main{max-width:1160px;margin:0 auto;padding:var(--gap) var(--gutter) calc(var(--section) * 2)}
@@ -91,8 +91,8 @@ button.danger{background:transparent;color:var(--negative);border-color:transpar
 .hbar{display:grid;grid-template-columns:minmax(120px,30%) 1fr auto;gap:8px;align-items:center;margin:6px 0}.hbar .fill{height:8px;background:var(--text);border-radius:0 4px 4px 0;min-width:2px}
 
 @media (max-width:720px){
-  .top{gap:16px;overflow-x:auto;scrollbar-width:none}.top .who,.brand .name{display:none}
-  .top nav{gap:16px}
+  .top{gap:16px}.top .who,.top .desk-nav,.top .top-out{display:none}
+  .top .desk-nav{gap:16px}
   .card{padding:16px}
 }
 
@@ -130,7 +130,11 @@ main{container-type:inline-size}
 .ub li{display:grid;grid-template-columns:110px 60px 1fr;gap:8px}
 .ub li a{font-size:13px;justify-self:end}
 .strip{overflow:hidden}
-@media (max-width:720px){.lc{overflow-x:auto;overscroll-behavior-x:contain}.lc svg{min-width:640px}.tabs{overflow-x:auto;overscroll-behavior-x:contain}}
+.lc .lc-compact{display:none}
+@media (max-width:720px){.lc .lc-wide{display:none}.lc .lc-compact{display:block}
+  .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px;border-bottom:0}
+  .tabs a{padding:10px 0 12px;border-bottom:1px solid var(--rule);margin-bottom:0;min-width:0}
+  .tabs a.on{border-bottom:2px solid var(--text)}}
 
 /* Form filling: field errors and autofilled fields awaiting review */
 .field-error{display:block;color:var(--negative);font-size:13px;margin-top:4px}
@@ -143,7 +147,7 @@ input.autofilled,select.autofilled{background:#f2f6fd;border-color:#9bb6e3}
 @media (pointer:coarse){
   button,.btn,input,select{min-height:44px}
   .btn.small,button.small{min-height:36px}
-  .top nav a{padding:12px 0}
+  .top .desk-nav a{padding:12px 0}
   input[type=checkbox]{width:22px!important;height:22px!important}
   td a,.ub li a{display:inline-block;padding:6px 0}
 }
@@ -213,3 +217,31 @@ h1,h2,h3{text-wrap:balance}p,li{text-wrap:pretty}
 .steps li.done::before{content:"✓";background:var(--text);color:#fff}
 .steps li.done span{color:var(--muted)}
 .empty{padding:var(--pad) 0;color:var(--muted)}
+
+/* Mobile app navigation: bottom tab bar + More sheet (desktop keeps the top links) */
+.tabbar,.sheet,.sheet-scrim{display:none}
+@media (max-width:720px){
+  body:has(.tabbar){padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  .top{justify-content:space-between}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(12px);border-top:1px solid var(--rule)}
+  .tabbar a,.tabbar button{all:unset;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;color:var(--muted);font-size:11px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tabbar svg{width:22px;height:22px}
+  .tabbar [aria-current=page],.tabbar button.on,.tabbar button[aria-expanded=true]{color:var(--text)}
+  .tabbar a:focus-visible,.tabbar button:focus-visible{outline:2px solid var(--chart);outline-offset:-2px;border-radius:12px}
+  .tabbar .tb-new{justify-self:center;width:48px;height:48px;min-height:0;border-radius:var(--radius-pill);background:var(--text);color:#fff;transition:transform 150ms var(--ease)}
+  .tabbar .tb-new:active{transform:scale(.94)}
+  .sheet-scrim{display:block;position:fixed;inset:0;z-index:31;background:rgba(23,25,28,.32);animation:fade 200ms var(--ease)}
+  .sheet{display:block;position:fixed;left:0;right:0;bottom:0;z-index:32;background:var(--ground);border-radius:24px 24px 0 0;
+    padding:8px var(--gutter) calc(16px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.12);animation:sheet-up var(--spring-dur) var(--spring)}
+  .sheet[hidden]{display:none}
+  .sheet-grip{display:block;width:36px;height:4px;border-radius:2px;background:var(--control);margin:0 auto 8px}
+  .sheet ul{list-style:none;margin:0;padding:0}
+  .sheet li a{display:flex;align-items:center;min-height:52px;font-size:17px;text-decoration:none;border-bottom:1px solid var(--rule)}
+  .sheet li a[aria-current=page]{font-weight:600}
+  .sheet-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;color:var(--muted);font-size:13px;min-width:0}
+  .sheet-foot span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@keyframes sheet-up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet,.sheet-scrim{animation:none}}

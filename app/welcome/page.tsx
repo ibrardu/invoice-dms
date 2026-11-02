@@ -5,6 +5,7 @@ import HeroDemo from "./HeroDemo";
 import Reveal from "./Reveal";
 import FilmButton from "./FilmButton";
 import FeatureVideo from "./FeatureVideo";
+import MobileMenu from "./MobileMenu";
 import "./landing.css";
 
 const serif = Source_Serif_4({ subsets: ["latin"], weight: ["400"], style: ["normal", "italic"], variable: "--lp-serif" });
@@ -69,7 +70,7 @@ export default function Welcome() {
         <div className="lp-wrap lp-nav-in">
           <Link href="/welcome" className="lp-brand" aria-label={`${name} home`}><Mark /><span>{name.toLowerCase()}</span></Link>
           <div className="lp-links"><a href="#how">How it works</a><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
-          <div className="lp-nav-cta"><Link href="/sign-in" className="lp-text">Sign in</Link><Link href="/sign-in?mode=up" className="lp-pill">Start free</Link></div>
+          <div className="lp-nav-cta"><Link href="/sign-in" className="lp-text">Sign in</Link><Link href="/sign-in?mode=up" className="lp-pill">Start free</Link><MobileMenu /></div>
         </div>
       </nav>
 
