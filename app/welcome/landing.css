@@ -208,3 +208,20 @@ main:has(.lp){max-width:none;padding:0}
 .lp-feat-lg .lp-feat-text h3{font-size:clamp(22px,2.2vw,30px)}
 .lp-feat-text p{color:var(--muted);margin:0;font-size:15px;max-width:34rem}
 @media (max-width:640px){.lp-bento{grid-template-columns:minmax(0,1fr)}.lp-feat-lg,.lp-feat-sm{grid-column:span 1}}
+
+/* Mobile menu: a Menu button opens a panel under the sticky nav */
+.lp-menu-btn{display:none}
+.lp-menu{display:none}
+@media (max-width:900px){
+  .lp .lp-menu-btn{display:grid;place-items:center;width:44px;height:44px;margin-right:-10px;border:0;background:transparent;color:var(--ink);border-radius:12px;cursor:pointer;padding:0}
+  .lp-menu-btn svg{width:22px;height:22px}
+  .lp-menu-btn:focus-visible{outline:2px solid var(--sienna);outline-offset:2px}
+  .lp-menu:not([hidden]){display:block;position:fixed;left:0;right:0;top:64px;bottom:0;z-index:19;background:#fff;
+    padding:8px clamp(20px,4vw,48px) calc(24px + env(safe-area-inset-bottom));overflow-y:auto;animation:lp-menu-in 260ms cubic-bezier(0.22,1,0.36,1)}
+  .lp-menu nav{display:flex;flex-direction:column}
+  .lp-menu nav a{font-family:var(--lp-serif),Georgia,serif;font-size:30px;letter-spacing:-.02em;padding:14px 0;border-bottom:1px solid var(--line)}
+  .lp-menu-cta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px}
+  .lp-menu-cta a{height:48px}
+}
+@keyframes lp-menu-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.lp-menu{animation:none}}
