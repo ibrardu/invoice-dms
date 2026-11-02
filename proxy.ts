@@ -4,5 +4,5 @@ import { auth } from "@/lib/auth/server";
 export default auth.middleware({ loginUrl: "/sign-in" });
 
 export const config = {
-  matcher: ["/((?!sign-in|api/auth|_next|favicon|.*\\.(?:css|js|png|jpg|svg|ico|woff2?)$).*)"],
+  matcher: ["/((?!$|welcome|impressum|datenschutz|agb|sign-in|api/auth|icon|_next|favicon|.*\\.(?:css|js|png|jpe?g|svg|ico|woff2?|mp4|webm)$).*)"],
 };

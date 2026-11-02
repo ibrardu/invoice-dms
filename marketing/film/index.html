@@ -1,0 +1,167 @@
+<!doctype html>
+<!-- Feldbuch product film (HyperFrames composition). 14 s, 1920x1080, 30 fps.
+     Open in the HyperFrames desktop app to edit, or render with marketing/film/render.mjs. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Feldbuch film</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<style>
+  html,body{margin:0;background:#ffffff}
+  #root{position:relative;width:1920px;height:1080px;overflow:hidden;background:#ffffff;color:#17191c;font-family:'Geist',sans-serif;
+    --ink:#17191c;--muted:#777b86;--tag:#979799;--mist:#f2f2f3;--line:#e4e4e6;--peach:#fbe1d1;--sienna:#5d2a1a}
+  .clip{position:absolute;inset:0}
+  #root *{box-sizing:border-box}
+  .serif{font-family:'Source Serif 4',serif;font-weight:400;letter-spacing:-.02em}
+  .cap{position:absolute;left:180px;top:120px;font-size:64px;line-height:1.05;max-width:1400px}
+  .cap em{font-style:italic;color:var(--muted)}
+  .card{background:#fff;border-radius:28px;box-shadow:0 0 0 1px rgba(4,23,43,.05),0 30px 40px -10px rgba(0,0,0,.12),0 12px 16px -8px rgba(0,0,0,.1)}
+
+  /* Scene 1: the site visit report */
+  #s1{background:#ffffff}
+  #report{position:absolute;left:180px;top:300px;width:1000px;padding:44px 52px;font-size:30px}
+  #report header{display:flex;justify-content:space-between;color:var(--tag);font-size:26px;margin-bottom:24px}
+  #report header b{color:var(--ink);font-weight:500}
+  .row{display:flex;justify-content:space-between;padding:12px 18px;margin:0 -18px;border-radius:14px;position:relative}
+  .row span:first-child{color:var(--muted)}
+  .hlbg{position:absolute;inset:0;border-radius:14px;background:var(--peach);transform-origin:left center;transform:scaleX(0);z-index:0}
+  .row > span{position:relative;z-index:1}
+  #act{margin-top:22px;color:var(--muted);line-height:1.45;font-size:28px}
+  #taxi{position:relative;color:var(--ink)}
+  #taxi i{position:absolute;inset:-2px -6px;background:var(--peach);border-radius:8px;transform-origin:left;transform:scaleX(0);z-index:-1}
+  #stack{position:absolute;left:1280px;top:330px;width:460px}
+  .doc{height:84px;border-radius:18px;background:var(--mist);margin-bottom:18px;display:flex;align-items:center;padding:0 28px;font-size:26px;color:var(--muted)}
+
+  /* Scene 2: reading progress (the app's real panel, at 2x) */
+  #s2{background:#fafafb}
+  #panel{position:absolute;left:180px;top:330px;width:1560px;padding:48px 56px;font-size:32px}
+  #panel .head{display:flex;justify-content:space-between;margin-bottom:22px}
+  .bar{height:12px;border-radius:6px;background:#e9e9eb;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--ink);transform-origin:left;transform:scaleX(0)}
+  .file{display:grid;grid-template-columns:1fr 420px 400px;gap:32px;align-items:center;margin-top:30px}
+  .file .st{color:var(--sienna);white-space:nowrap;text-align:right}
+  .file .mini{height:8px;border-radius:4px;background:#e9e9eb;overflow:hidden}
+  .file .mini i{display:block;height:100%;background:var(--ink);transform-origin:left;transform:scaleX(0)}
+  .file.done .mini i{background:#2e7d32}
+
+  /* Scene 3: the real invoice PDF */
+  #s3{background:#f2f2f3}
+  #paper{position:absolute;left:1060px;top:60px;width:700px;height:990px;transform-origin:62% 34%;overflow:hidden;border-radius:6px;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)}
+  #paper img{width:100%;display:block}
+  #paperMask{position:absolute;left:0;right:0;bottom:0;top:0;background:#fff;transform-origin:bottom;transform:scaleY(0)}
+  #s3 .cap{left:180px;top:380px;max-width:720px}
+  #s3 .sub{position:absolute;left:180px;top:560px;font-size:30px;color:var(--muted);max-width:700px;line-height:1.4}
+  #chip{position:absolute;left:180px;top:800px;font-size:28px;padding:12px 26px;border-radius:999px;background:var(--peach);color:var(--sienna)}
+
+  /* Scene 4: end card */
+  #s4{background:#ffffff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px}
+  #lock{display:flex;align-items:center;gap:28px}
+  #lock svg{width:120px;height:120px}
+  #word{font-size:120px;letter-spacing:-.03em;clip-path:inset(0 100% 0 0)}
+  #tag{font-size:48px;color:var(--muted)}
+  #tag em{font-style:italic}
+  #cta{font-size:36px;font-weight:500;background:var(--ink);color:#fff;border-radius:999px;padding:22px 52px}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="feldbuch-film" data-duration="14" data-width="1920" data-height="1080">
+
+  <section id="s1" class="clip" data-start="0" data-duration="3.6" data-track-index="0" data-track-kind="graphics">
+    <h1 id="c1" class="cap serif" data-var-text="cap1">Friday, 21:40. <em>Four reports to bill.</em></h1>
+    <article id="report" class="card">
+      <header><span>Site visit report</span><b>19.06.2026</b></header>
+      <div class="row"><span>Ticket</span><span>CHG0260260</span></div>
+      <div class="row"><span>Engineer</span><span>Ibrar Ahmed</span></div>
+      <div class="row" id="r1"><i class="hlbg"></i><span>Time onsite</span><span>08:46</span></div>
+      <div class="row" id="r2"><i class="hlbg"></i><span>Time left site</span><span>17:32</span></div>
+      <p id="act">Stacked the access switches, patched the core uplinks. Fibre delivery missed, <span id="taxi"><i></i>took a taxi to the supplier's warehouse</span>.</p>
+    </article>
+    <div id="stack"><div class="doc">IT_09062026.pdf</div><div class="doc">IT_16062026.pdf</div><div class="doc">IT_18062026.pdf</div></div>
+  </section>
+
+  <section id="s2" class="clip" data-start="3.6" data-duration="4.0" data-track-index="0" data-track-kind="graphics">
+    <h1 id="c2" class="cap serif" data-var-text="cap2">Drop them in. <em>They are read in the EU.</em></h1>
+    <div id="panel" class="card">
+      <div class="head"><span>Reading 4 files</span><span id="pct" style="color:#979799">0%</span></div>
+      <div class="bar"><i id="barAll"></i></div>
+      <div class="file" id="f1"><span>IT_09062026.pdf</span><span class="mini"><i></i></span><span class="st">Uploading</span></div>
+      <div class="file" id="f2"><span>IT_16062026.pdf</span><span class="mini"><i></i></span><span class="st">Uploading</span></div>
+      <div class="file" id="f3"><span>IT_18062026.pdf</span><span class="mini"><i></i></span><span class="st">Uploading</span></div>
+      <div class="file" id="f4"><span>IT_19062026.pdf</span><span class="mini"><i></i></span><span class="st">Uploading</span></div>
+    </div>
+  </section>
+
+  <section id="s3" class="clip" data-start="7.6" data-duration="4.0" data-track-index="0" data-track-kind="graphics">
+    <h1 class="cap serif" data-var-text="cap3">Priced with your rates. <em>Ready to send.</em></h1>
+    <p class="sub">Half day, full day, hourly or per task. The VAT note for clients abroad, the SEPA QR code and your footer on every page.</p>
+    <span id="chip">€ 1,088.00 · Invoice #61926</span>
+    <div id="paper"><img src="assets/invoice-1.png" alt="Invoice #61926 generated by Feldbuch"><div id="paperMask"></div></div>
+  </section>
+
+  <section id="s4" class="clip" data-start="11.6" data-duration="2.4" data-track-index="0" data-track-kind="graphics">
+    <div id="lock">
+      <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#17191c"/><rect id="pg" x="9" y="7" width="14" height="18" rx="2" fill="#fbe1d1"/><path d="M12 12h8M12 16h8M12 20h5" stroke="#5d2a1a" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span id="word" class="serif">feldbuch</span>
+    </div>
+    <p id="tag" class="serif">Site visit reports in. <em>Invoices out.</em></p>
+    <span id="cta" data-var-text="cta">Start free</span>
+  </section>
+</div>
+
+<script src="assets/gsap.min.js"></script>
+<script>
+  // One paused timeline; everything visible is a function of its time (HyperFrames contract).
+  const tl = gsap.timeline({ paused: true });
+  const E = "power3.out", IO = "power2.inOut";
+
+  // Scene 1 (0 to 3.6)
+  tl.from("#c1", { y: 40, opacity: 0, duration: .7, ease: E }, 0.1)
+    .from("#report", { y: 60, opacity: 0, duration: .8, ease: E }, 0.25)
+    .from("#stack .doc", { x: 60, opacity: 0, duration: .6, ease: E, stagger: .1 }, 0.5)
+    .to("#r1 .hlbg", { scaleX: 1, duration: .45, ease: E }, 1.2)
+    .to("#r2 .hlbg", { scaleX: 1, duration: .45, ease: E }, 1.45)
+    .to("#taxi i", { scaleX: 1, duration: .55, ease: E }, 2.0)
+    .to("#report", { scale: .55, x: 520, y: 40, opacity: 0, duration: .55, ease: IO }, 3.0)
+    .to("#stack, #c1", { opacity: 0, duration: .4 }, 3.05);
+
+  // Scene 2 (3.6 to 7.6): upload -> reading -> done, per file
+  tl.from("#c2", { y: 40, opacity: 0, duration: .6, ease: E }, 3.65)
+    .from("#panel", { y: 50, opacity: 0, duration: .6, ease: E }, 3.7);
+  const files = ["#f1", "#f2", "#f3", "#f4"];
+  files.forEach((f, i) => {
+    const t0 = 4.1 + i * 0.12;
+    tl.to(`${f} .mini i`, { scaleX: .2, duration: .4, ease: "none" }, t0)
+      .set(`${f} .st`, { textContent: "Reading with LlamaParse" }, t0 + .4)
+      .to(`${f} .mini i`, { scaleX: .85, duration: 1.6 + i * .25, ease: "power1.out" }, t0 + .4)
+      .set(`${f} .st`, { textContent: "Done", color: "#2e7d32" }, t0 + 2.1 + i * .25)
+      .set(f, { className: "file done" }, t0 + 2.1 + i * .25)
+      .to(`${f} .mini i`, { scaleX: 1, duration: .25 }, t0 + 2.1 + i * .25);
+  });
+  const pct = { v: 0 };
+  tl.to("#barAll", { scaleX: 1, duration: 3.1, ease: "power1.inOut" }, 4.1)
+    .to(pct, { v: 100, duration: 3.1, ease: "power1.inOut", onUpdate: () => { document.getElementById("pct").textContent = Math.round(pct.v) + "%"; } }, 4.1)
+    .to("#panel, #c2", { opacity: 0, y: -30, duration: .4, ease: IO }, 7.2);
+
+  // Scene 3 (7.6 to 11.6): the generated invoice writes itself in, top to bottom
+  tl.from("#s3 .cap", { y: 40, opacity: 0, duration: .6, ease: E }, 7.65)
+    .from("#paper", { y: 80, opacity: 0, duration: .7, ease: E }, 7.7)
+    .set("#paperMask", { scaleY: 1 }, 7.6)
+    .to("#paperMask", { scaleY: 0, duration: 1.6, ease: "power2.inOut" }, 8.1)
+    .from("#s3 .sub", { y: 30, opacity: 0, duration: .6, ease: E }, 8.6)
+    .from("#chip", { scale: .9, opacity: 0, duration: .5, ease: "back.out(1.6)" }, 9.9)
+    .to("#s3 .cap, #s3 .sub", { opacity: 0, x: -30, duration: .35, ease: IO }, 9.7)
+    .to("#paper", { scale: 1.75, duration: .6, ease: "power2.inOut" }, 9.85)   // punch in on the priced lines
+    .to("#chip, #paper", { opacity: 0, duration: .35 }, 11.25);
+
+  // Scene 4 (11.6 to 14): the mark is performed, then the wordmark wipes in
+  tl.from("#lock svg", { scale: .6, opacity: 0, duration: .5, ease: "back.out(1.7)" }, 11.65)
+    .from("#pg", { attr: { height: 0 }, duration: .45, ease: E }, 11.85)
+    .to("#word", { clipPath: "inset(0 0% 0 0)", duration: .6, ease: E }, 12.05)
+    .from("#tag", { y: 24, opacity: 0, duration: .5, ease: E }, 12.4)
+    .from("#cta", { y: 24, opacity: 0, duration: .5, ease: E }, 12.6);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["feldbuch-film"] = tl;
+</script>
+</body>
+</html>

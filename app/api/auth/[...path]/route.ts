@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth/server";
 
 const h = auth.handler();
-const signupOpen = () => process.env.ALLOW_SIGNUP === "true";
+const signupOpen = () => process.env.APP_MODE === "saas" || process.env.ALLOW_SIGNUP === "true";
 
 // Sign-up is closed unless ALLOW_SIGNUP=true (set it temporarily to add a user).
 export async function POST(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
